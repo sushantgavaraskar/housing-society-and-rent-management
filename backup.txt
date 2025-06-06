@@ -1,0 +1,249 @@
+i think i have already done it it i am pasting codes of all files here so you can check
+/config/db.js-
+const mongoose = require('mongoose');
+
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI);
+        console.log('MongoDB connected');
+    } catch (error) {
+        console.error('MongoDB connection failed:', error);
+        process.exit(1);
+    }
+};
+
+module.exports = connectDB;
+
+/controllers/authController.js-
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+exports.register = async (req, res) => {
+    try {
+        const { name, email, password, role } = req.body;
+        const existingUser = await User.findOne({ email });
+        if (existingUser) return res.status(400).json({ message: 'User already exists' });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await User.create({ name, email, password: hashedPassword, role });
+
+        res.status(201).json({ message: 'User registered successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+        res.json({ token, user: { id: user._id, name: user.name, role: user.role } });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+/controllers/propertyController.js-
+const Property = require('../models/Property');
+
+exports.createProperty = async (req, res) => {
+    try {
+        const { title, description, address, rentAmount } = req.body;
+
+        const property = await Property.create({
+            title,
+            description,
+            address,
+            rentAmount,
+            owner: req.user._id
+        });
+
+        res.status(201).json(property);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.getProperties = async (req, res) => {
+    try {
+        const { city, minRent, maxRent } = req.query;
+
+        let query = {};
+
+        if (city) {
+            query.address = { $regex: city, $options: 'i' }; // case-insensitive
+        }
+
+        if (minRent || maxRent) {
+            query.rentAmount = {};
+            if (minRent) query.rentAmount.$gte = Number(minRent);
+            if (maxRent) query.rentAmount.$lte = Number(maxRent);
+        }
+
+        const properties = await Property.find(query).populate('owner', 'name email');
+        res.json(properties);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.rentProperty = async (req, res) => {
+    try {
+        const propertyId = req.params.id;
+        const userId = req.user._id;
+
+        const property = await Property.findById(propertyId);
+
+        if (!property) {
+            return res.status(404).json({ message: 'Property not found' });
+        }
+
+        if (property.isRented) {
+            return res.status(400).json({ message: 'Property already rented' });
+        }
+
+        property.isRented = true;
+        property.tenant = userId;
+
+        await property.save();
+
+        res.status(200).json({ message: 'Property rented successfully', property });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+exports.getMyProperties = async (req, res) => {
+    try {
+        const ownerId = req.user._id;
+
+        const properties = await Property.find({ owner: ownerId }).populate('tenant', 'name email');
+
+        res.json(properties);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+
+/middleware/authMiddleware.js-
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+
+exports.protect = async (req, res, next) => {
+    let token;
+
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        try {
+            token = req.headers.authorization.split(' ')[1];
+
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+            req.user = await User.findById(decoded.id).select('-password');
+
+            next();
+        } catch (error) {
+            console.error(error);
+            res.status(401).json({ message: 'Not authorized, token failed' });
+        }
+    }
+
+    if (!token) {
+        res.status(401).json({ message: 'Not authorized, no token' });
+    }
+};
+
+/models/Property.js -
+const mongoose = require('mongoose');
+
+const propertySchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    description: { type: String },
+    address: { type: String, required: true },
+    rentAmount: { type: Number, required: true },
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    isRented: { type: Boolean, default: false },
+    tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+}, { timestamps: true });
+
+module.exports = mongoose.model('Property', propertySchema);
+
+/models/User.js -
+const mongoose = require('mongoose');
+
+const userSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    role: { type: String, enum: ['owner', 'tenant'], default: 'tenant' }
+}, { timestamps: true });
+
+module.exports = mongoose.model('User', userSchema);
+
+/routes/authRoutes.js
+const express = require('express');
+const { register, login } = require('../controllers/authController');
+const router = express.Router();
+
+router.post('/register', register);
+router.post('/login', login);
+
+module.exports = router;
+
+/routes/propertyRputes.js
+const express = require('express');
+const { createProperty, getProperties, rentProperty, getMyProperties } = require('../controllers/propertyController');
+
+
+const { protect } = require('../middleware/authMiddleware');
+
+
+const router = express.Router();
+
+router.post('/', protect, createProperty);
+router.get('/', getProperties);
+router.put('/:id/rent', protect, rentProperty);
+router.get('/my', protect, getMyProperties);
+
+
+
+module.exports = router;
+
+
+/server.js - 
+const express = require('express');
+const cors = require('cors');
+const connectDB = require('./config/db');
+const authRoutes = require('./routes/authRoutes');
+const propertyRoutes = require('./routes/propertyRoutes');
+require('dotenv').config();
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Connect Database
+connectDB();
+
+// Routes
+app.use('/api/auth', authRoutes);
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(Server running on port ${PORT}));
+app.use('/api/properties', propertyRoutes);
+
+other files are node module , .env(which has database url),.gitignore, package.json, package-lock.json  
