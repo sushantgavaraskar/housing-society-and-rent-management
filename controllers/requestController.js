@@ -1,4 +1,5 @@
 const Request = require('../models/request');
+const Society = require('../models/society');
 
 exports.createRequest = async (req, res, next) => {
   try {
@@ -40,3 +41,16 @@ exports.updateRequestStatus = async (req, res, next) => {
     next(err);
   }
 };
+exports.getAllComplaintsGroupedBySociety = async (req, res, next) => {
+    try {
+        // Fetch all complaints and populate society and raisedBy fields
+        const complaints = await Request.find()
+          .populate('society', 'name')      // populate society name only
+          .populate('raisedBy', 'name email') // populate raisedBy user info
+    
+        res.status(200).json(complaints);
+      } catch (error) {
+        console.error('Error fetching complaints grouped by society:', error);
+        res.status(500).json({ message: 'Server error' });
+      }
+    };

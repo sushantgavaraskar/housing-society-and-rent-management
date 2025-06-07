@@ -5,6 +5,7 @@ const {
   getMyRequests,
   getRequestsBySociety,
   updateRequestStatus,
+  getAllComplaintsGroupedBySociety
 } = require('../controllers/requestController');
 const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 

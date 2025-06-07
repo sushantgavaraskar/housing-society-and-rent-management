@@ -1,7 +1,7 @@
 // src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { AuthProvider, AuthContext } from './context/AuthContext';
+import { AuthProvider, AuthContext } from './contexts/AuthContext';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 import Navbar from './components/Navbar';

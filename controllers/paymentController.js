@@ -1,37 +1,51 @@
-const Property = require('../models/property');
+// controllers/paymentController.js
+const Payment = require('../models/paymentModel');
 
-exports.createProperty = async (req, res, next) => {
+// Tenant makes a payment
+const makePayment = async (req, res) => {
   try {
-    const property = new Property({ ...req.body, owner: req.user._id });
-    await property.save();
-    res.status(201).json(property);
-  } catch (err) {
-    next(err);
+    const { amount, paymentType, societyId } = req.body;
+    const userId = req.user._id;
+
+    if (!amount || !paymentType || !societyId) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    const payment = new Payment({
+      user: userId,
+      society: societyId,
+      amount,
+      paymentType,
+      status: 'completed',
+    });
+
+    await payment.save();
+
+    res.status(201).json({ message: 'Payment successful', payment });
+  } catch (error) {
+    console.error('Payment error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-exports.assignTenant = async (req, res, next) => {
+// Get payment history (all roles)
+const getPayments = async (req, res) => {
   try {
-    const { tenantId } = req.body;
-    const property = await Property.findOneAndUpdate(
-      { _id: req.params.id, owner: req.user._id },
-      { tenant: tenantId },
-      { new: true }
-    );
-    if (!property) return res.status(404).json({ message: 'Property not found or not owned by you' });
-    res.json(property);
-  } catch (err) {
-    next(err);
+    const userId = req.user._id;
+    const role = req.user.role;
+
+    let payments;
+    if (role === 'admin') {
+      payments = await Payment.find().populate('user', 'name email').populate('society', 'name');
+    } else {
+      payments = await Payment.find({ user: userId }).populate('society', 'name');
+    }
+
+    res.status(200).json(payments);
+  } catch (error) {
+    console.error('Error fetching payments:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
-exports.getMyProperties = async (req, res, next) => {
-  try {
-    const properties = await Property.find({ owner: req.user._id })
-      .populate('society')
-      .populate('tenant', 'name email');
-    res.json(properties);
-  } catch (err) {
-    next(err);
-  }
-};
+module.exports = { makePayment, getPayments };

@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
+import CreateSocietyForm from '../components/CreateSocietyForm';
+import ComplaintsBySociety from '../components/ComplaintsBySociety';
+import AddMaintenanceForm from '../components/AddMaintenanceForm';
 
 const AdminDashboard = () => {
   const [societies, setSocieties] = useState([]);
@@ -26,6 +29,9 @@ const AdminDashboard = () => {
           </li>
         ))}
       </ul>
+        <CreateSocietyForm />
+        <ComplaintsBySociety />
+        <AddMaintenanceForm />
     </div>
   );
 };

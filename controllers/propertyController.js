@@ -1,83 +1,37 @@
 const Property = require('../models/property');
 
-exports.createProperty = async (req, res) => {
-    try {
-        const { title, description, address, rentAmount } = req.body;
-
-        const property = await Property.create({
-            title,
-            description,
-            address,
-            rentAmount,
-            owner: req.user._id
-        });
-
-        res.status(201).json(property);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
+exports.createProperty = async (req, res, next) => {
+  try {
+    const property = new Property({ ...req.body, owner: req.user._id });
+    await property.save();
+    res.status(201).json(property);
+  } catch (err) {
+    next(err);
+  }
 };
 
-exports.getProperties = async (req, res) => {
-    try {
-        const { city, minRent, maxRent } = req.query;
-
-        let query = {};
-
-        if (city) {
-            query.address = { $regex: city, $options: 'i' }; // case-insensitive
-        }
-
-        if (minRent || maxRent) {
-            query.rentAmount = {};
-            if (minRent) query.rentAmount.$gte = Number(minRent);
-            if (maxRent) query.rentAmount.$lte = Number(maxRent);
-        }
-
-        const properties = await Property.find(query).populate('owner', 'name email');
-        res.json(properties);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
+exports.assignTenant = async (req, res, next) => {
+  try {
+    const { tenantId } = req.body;
+    const property = await Property.findOneAndUpdate(
+      { _id: req.params.id, owner: req.user._id },
+      { tenant: tenantId },
+      { new: true }
+    );
+    if (!property) return res.status(404).json({ message: 'Property not found or not owned by you' });
+    res.json(property);
+  } catch (err) {
+    next(err);
+  }
 };
 
-exports.rentProperty = async (req, res) => {
-    try {
-        const propertyId = req.params.id;
-        const userId = req.user._id;
-
-        const property = await Property.findById(propertyId);
-
-        if (!property) {
-            return res.status(404).json({ message: 'Property not found' });
-        }
-
-        if (property.isRented) {
-            return res.status(400).json({ message: 'Property already rented' });
-        }
-
-        property.isRented = true;
-        property.tenant = userId;
-
-        await property.save();
-
-        res.status(200).json({ message: 'Property rented successfully', property });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-exports.getMyProperties = async (req, res) => {
-    try {
-        const ownerId = req.user._id;
-
-        const properties = await Property.find({ owner: ownerId }).populate('society').populate('tenant', 'name email');
-
-        res.json(properties);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
+exports.getMyProperties = async (req, res, next) => {
+  try {
+    const properties = await Property.find({ owner: req.user._id })
+      .populate('society')
+      .populate('tenant', 'name email');
+    res.json(properties);
+  } catch (err) {
+    next(err);
+  }
 };
