@@ -1,70 +1,37 @@
-// controllers/paymentController.js
-const Transaction = require('../models/Transaction');
-const Property = require('../models/Property');
-const Maintenance = require('../models/Maintenance');
+const Property = require('../models/property');
 
-exports.payRent = async (req, res) => {
-    try {
-        const { propertyId, amount } = req.body;
-        const userId = req.user._id;
-
-        const property = await Property.findById(propertyId);
-        if (!property || !property.tenant.equals(userId)) {
-            return res.status(403).json({ message: 'Unauthorized or invalid property' });
-        }
-
-        const transaction = await Transaction.create({
-            user: userId,
-            type: 'rent',
-            amount,
-            referenceId: propertyId,
-        });
-
-        res.json({ message: 'Rent payment recorded', transaction });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error recording rent payment' });
-    }
+exports.createProperty = async (req, res, next) => {
+  try {
+    const property = new Property({ ...req.body, owner: req.user._id });
+    await property.save();
+    res.status(201).json(property);
+  } catch (err) {
+    next(err);
+  }
 };
 
-exports.payMaintenance = async (req, res) => {
-    try {
-        const { maintenanceId, amount } = req.body;
-        const userId = req.user._id;
-
-        const maintenance = await Maintenance.findById(maintenanceId);
-        if (!maintenance || !maintenance.tenant.equals(userId)) {
-            return res.status(403).json({ message: 'Unauthorized or invalid maintenance record' });
-        }
-
-        await Maintenance.findByIdAndUpdate(maintenanceId, {
-            status: 'paid',
-            paidDate: new Date()
-        });
-
-        const transaction = await Transaction.create({
-            user: userId,
-            type: 'maintenance',
-            amount,
-            referenceId: maintenanceId,
-        });
-
-        res.json({ message: 'Maintenance payment recorded', transaction });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error recording maintenance payment' });
-    }
+exports.assignTenant = async (req, res, next) => {
+  try {
+    const { tenantId } = req.body;
+    const property = await Property.findOneAndUpdate(
+      { _id: req.params.id, owner: req.user._id },
+      { tenant: tenantId },
+      { new: true }
+    );
+    if (!property) return res.status(404).json({ message: 'Property not found or not owned by you' });
+    res.json(property);
+  } catch (err) {
+    next(err);
+  }
 };
 
-exports.getTransactions = async (req, res) => {
-    try {
-        const userId = req.user._id;
-
-        const transactions = await Transaction.find({ user: userId }).sort({ createdAt: -1 });
-
-        res.json(transactions);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error fetching transactions' });
-    }
+exports.getMyProperties = async (req, res, next) => {
+  try {
+    const properties = await Property.find({ owner: req.user._id })
+      .populate('society')
+      .populate('tenant', 'name email');
+    res.json(properties);
+  } catch (err) {
+    next(err);
+  }
 };

@@ -1,4 +1,4 @@
-const Property = require('../models/Property');
+const Property = require('../models/property');
 
 exports.createProperty = async (req, res) => {
     try {
@@ -73,7 +73,7 @@ exports.getMyProperties = async (req, res) => {
     try {
         const ownerId = req.user._id;
 
-        const properties = await Property.find({ owner: ownerId }).populate('tenant', 'name email');
+        const properties = await Property.find({ owner: ownerId }).populate('society').populate('tenant', 'name email');
 
         res.json(properties);
     } catch (error) {

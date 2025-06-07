@@ -1,10 +1,8 @@
 const express = require('express');
-const { protect } = require('../middleware/authMiddleware');
-const { createSociety, getMySocieties } = require('../controllers/societyController');
-
 const router = express.Router();
+const { createSociety } = require('../controllers/societyController');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 
-router.post('/', protect, createSociety);
-router.get('/my', protect, getMySocieties);
+router.post('/', authenticateUser, authorizeRoles('admin'), createSociety);
 
 module.exports = router;

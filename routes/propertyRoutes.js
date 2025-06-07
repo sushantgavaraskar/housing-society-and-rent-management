@@ -1,17 +1,14 @@
 const express = require('express');
-const { createProperty, getProperties, rentProperty, getMyProperties } = require('../controllers/propertyController');
-
-
-const { protect } = require('../middleware/authMiddleware');
-
-
 const router = express.Router();
+const {
+  createProperty,
+  assignTenant,
+  getMyProperties,
+} = require('../controllers/propertyController');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 
-router.post('/', protect, createProperty);
-router.get('/', getProperties);
-router.put('/:id/rent', protect, rentProperty);
-router.get('/my', protect, getMyProperties);
-
-
+router.post('/', authenticateUser, authorizeRoles('owner'), createProperty);
+router.put('/:id/rent', authenticateUser, authorizeRoles('owner'), assignTenant);
+router.get('/my', authenticateUser, authorizeRoles('owner'), getMyProperties);
 
 module.exports = router;

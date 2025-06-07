@@ -1,17 +1,16 @@
 const express = require('express');
-const { protect } = require('../middleware/authMiddleware');
-const {
-    createRequest,
-    getMyRequests,
-    getSocietyRequests,
-    updateRequestStatus
-} = require('../controllers/requestController');
-
 const router = express.Router();
+const {
+  createRequest,
+  getMyRequests,
+  getRequestsBySociety,
+  updateRequestStatus,
+} = require('../controllers/requestController');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 
-router.post('/', protect, createRequest); // Tenant creates request
-router.get('/my', protect, getMyRequests); // Tenant views their requests
-router.get('/society/:societyId', protect, getSocietyRequests); // Admin views all for a society
-router.put('/:id/status', protect, updateRequestStatus); // Admin updates request
+router.post('/', authenticateUser, authorizeRoles('tenant'), createRequest);
+router.get('/my', authenticateUser, authorizeRoles('tenant'), getMyRequests);
+router.get('/society/:id', authenticateUser, authorizeRoles('admin'), getRequestsBySociety);
+router.put('/:id/status', authenticateUser, authorizeRoles('admin'), updateRequestStatus);
 
 module.exports = router;

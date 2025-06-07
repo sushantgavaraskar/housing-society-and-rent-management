@@ -1,59 +1,33 @@
-const Maintenance = require('../models/Maintenance');
+const Maintenance = require('../models/maintenance');
 
-exports.createMaintenance = async (req, res) => {
-    try {
-        const { flat, amount, month, dueDate, tenant, society } = req.body;
-
-        const maintenance = await Maintenance.create({
-            flat,
-            amount,
-            month,
-            dueDate,
-            tenant,
-            society,
-            status: 'unpaid'
-        });
-
-        res.status(201).json(maintenance);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error creating maintenance' });
-    }
+exports.createMaintenance = async (req, res, next) => {
+  try {
+    const record = new Maintenance(req.body);
+    await record.save();
+    res.status(201).json(record);
+  } catch (err) {
+    next(err);
+  }
 };
 
-exports.getMaintenanceByTenant = async (req, res) => {
-    try {
-        const tenantId = req.user._id;
-
-        const records = await Maintenance.find({ tenant: tenantId })
-            .populate('flat', 'title address')
-            .populate('society', 'name');
-
-        res.json(records);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error fetching records' });
-    }
+exports.getMyMaintenance = async (req, res, next) => {
+  try {
+    const records = await Maintenance.find({ tenant: req.user._id });
+    res.json(records);
+  } catch (err) {
+    next(err);
+  }
 };
 
-exports.updatePaymentStatus = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status } = req.body;
-
-        const record = await Maintenance.findById(id);
-        if (!record) return res.status(404).json({ message: 'Record not found' });
-
-        record.status = status;
-        if (status === 'paid') {
-            record.paidDate = new Date();
-        }
-
-        await record.save();
-
-        res.json({ message: 'Status updated', record });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error updating status' });
-    }
+exports.updateMaintenanceStatus = async (req, res, next) => {
+  try {
+    const record = await Maintenance.findByIdAndUpdate(
+      req.params.id,
+      { status: req.body.status },
+      { new: true }
+    );
+    res.json(record);
+  } catch (err) {
+    next(err);
+  }
 };

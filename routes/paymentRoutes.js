@@ -1,16 +1,13 @@
-// routes/paymentRoutes.js
 const express = require('express');
-const { protect } = require('../middleware/authMiddleware');
-const {
-    payRent,
-    payMaintenance,
-    getTransactions
-} = require('../controllers/paymentController');
-
 const router = express.Router();
+const {
+  makePayment,
+  getPayments,
+} = require('../controllers/paymentController');
+const { authenticateUser } = require('../middleware/authMiddleware');
 
-router.post('/rent', protect, payRent);
-router.post('/maintenance', protect, payMaintenance);
-router.get('/', protect, getTransactions);
+router.post('/rent', authenticateUser, makePayment);
+router.post('/maintenance', authenticateUser, makePayment);
+router.get('/', authenticateUser, getPayments);
 
 module.exports = router;

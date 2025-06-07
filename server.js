@@ -1,38 +1,40 @@
+// ==== server.js ====
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
-const connectDB = require('./config/db');
+const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
 const propertyRoutes = require('./routes/propertyRoutes');
 const societyRoutes = require('./routes/societyRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
-const requestRoutes = require('./routes/requestRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const requestRoutes = require('./routes/requestRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const errorHandler = require('./middleware/errorHandler');
 
-require('dotenv').config();
-
+dotenv.config();
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Connect Database
-connectDB();
-
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/properties', propertyRoutes);
+app.use('/api/societies', societyRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/requests', requestRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+
+// Error handler
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-app.use('/api/properties', propertyRoutes);
 
-app.use('/api/societies', societyRoutes);
-
-app.use('/api/maintenance', maintenanceRoutes);
-
-app.use('/api/requests', requestRoutes);
-
-app.use('/api/payments', paymentRoutes);
-
-app.use('/api/dashboard', dashboardRoutes);
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}).catch((err) => console.error(err));

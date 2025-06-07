@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
 const {
-    getOwnerDashboard,
-    getTenantDashboard,
-    getAdminDashboard
+  ownerDashboard,
+  tenantDashboard,
+  adminDashboard,
 } = require('../controllers/dashboardController');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 
-router.get('/owner', protect, getOwnerDashboard);
-router.get('/tenant', protect, getTenantDashboard);
-router.get('/admin', protect, getAdminDashboard);
+router.get('/owner', authenticateUser, authorizeRoles('owner'), ownerDashboard);
+router.get('/tenant', authenticateUser, authorizeRoles('tenant'), tenantDashboard);
+router.get('/admin', authenticateUser, authorizeRoles('admin'), adminDashboard);
 
 module.exports = router;

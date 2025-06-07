@@ -1,15 +1,14 @@
 const express = require('express');
-const { protect } = require('../middleware/authMiddleware');
-const {
-    createMaintenance,
-    getMaintenanceByTenant,
-    updatePaymentStatus
-} = require('../controllers/maintenanceController');
-
 const router = express.Router();
+const {
+  createMaintenance,
+  getMyMaintenance,
+  updateMaintenanceStatus,
+} = require('../controllers/maintenanceController');
+const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
 
-router.post('/', protect, createMaintenance); // Admin use
-router.get('/my', protect, getMaintenanceByTenant); // Tenant use
-router.put('/:id/status', protect, updatePaymentStatus); // Update paid/late
+router.post('/', authenticateUser, authorizeRoles('admin'), createMaintenance);
+router.get('/my', authenticateUser, authorizeRoles('tenant'), getMyMaintenance);
+router.put('/:id/status', authenticateUser, authorizeRoles('admin'), updateMaintenanceStatus);
 
 module.exports = router;

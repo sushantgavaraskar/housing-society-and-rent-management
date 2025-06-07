@@ -1,74 +1,42 @@
-const Request = require('../models/Request');
+const Request = require('../models/request');
 
-// Create a new maintenance request (tenant)
-exports.createRequest = async (req, res) => {
-    try {
-        const { title, description, flat, society } = req.body;
-
-        const request = await Request.create({
-            title,
-            description,
-            flat,
-            society,
-            tenant: req.user._id
-        });
-
-        res.status(201).json(request);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error creating request' });
-    }
+exports.createRequest = async (req, res, next) => {
+  try {
+    const request = new Request({ ...req.body, raisedBy: req.user._id });
+    await request.save();
+    res.status(201).json(request);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// View requests for current tenant
-exports.getMyRequests = async (req, res) => {
-    try {
-        const requests = await Request.find({ tenant: req.user._id })
-            .populate('flat', 'title address')
-            .populate('society', 'name')
-            .sort({ createdAt: -1 });
-
-        res.json(requests);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching requests' });
-    }
+exports.getMyRequests = async (req, res, next) => {
+  try {
+    const requests = await Request.find({ raisedBy: req.user._id });
+    res.json(requests);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// Admin: View all requests in society
-exports.getSocietyRequests = async (req, res) => {
-    try {
-        const { societyId } = req.params;
-
-        const requests = await Request.find({ society: societyId })
-            .populate('tenant', 'name email')
-            .populate('flat', 'title address');
-
-        res.json(requests);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching society requests' });
-    }
+exports.getRequestsBySociety = async (req, res, next) => {
+  try {
+    const requests = await Request.find({ society: req.params.id });
+    res.json(requests);
+  } catch (err) {
+    next(err);
+  }
 };
 
-// Admin: Update request status
-exports.updateRequestStatus = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status, feedback, assignedTo } = req.body;
-
-        const request = await Request.findById(id);
-        if (!request) return res.status(404).json({ message: 'Request not found' });
-
-        request.status = status;
-        request.feedback = feedback || request.feedback;
-        request.assignedTo = assignedTo || request.assignedTo;
-
-        if (status === 'resolved') {
-            request.resolvedAt = new Date();
-        }
-
-        await request.save();
-        res.json({ message: 'Request updated', request });
-    } catch (error) {
-        res.status(500).json({ message: 'Error updating request' });
-    }
+exports.updateRequestStatus = async (req, res, next) => {
+  try {
+    const request = await Request.findByIdAndUpdate(
+      req.params.id,
+      { status: req.body.status },
+      { new: true }
+    );
+    res.json(request);
+  } catch (err) {
+    next(err);
+  }
 };
