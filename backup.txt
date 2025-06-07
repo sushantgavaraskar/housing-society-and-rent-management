@@ -1,21 +1,6 @@
-i think i have already done it it i am pasting codes of all files here so you can check
-/config/db.js-
-const mongoose = require('mongoose');
-
-const connectDB = async () => {
-    try {
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log('MongoDB connected');
-    } catch (error) {
-        console.error('MongoDB connection failed:', error);
-        process.exit(1);
-    }
-};
-
-module.exports = connectDB;
-
-/controllers/authController.js-
-const User = require('../models/User');
+/controllers
+ /authController
+   const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -52,8 +37,144 @@ exports.login = async (req, res) => {
     }
 };
 
-/controllers/propertyController.js-
+ /dashboardController
+   // controllers/dashboardController.js
+
 const Property = require('../models/Property');
+const Maintenance = require('../models/Maintenance');
+const User = require('../models/User');
+
+exports.getOwnerDashboard = async (req, res) => {
+    try {
+        const ownerId = req.user._id;
+
+        const properties = await Property.find({ owner: ownerId }).populate('tenant', 'name email');
+
+        const rented = properties.filter(p => p.isRented).length;
+        const available = properties.length - rented;
+
+        const maintenance = await Maintenance.find({ flat: { $in: properties.map(p => p._id) } });
+
+        res.json({
+            properties,
+            rented,
+            available,
+            tenants: properties.map(p => p.tenant).filter(Boolean),
+            maintenance
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Dashboard error' });
+    }
+};
+
+exports.getTenantDashboard = async (req, res) => {
+    try {
+        const tenantId = req.user._id;
+
+        const property = await Property.findOne({ tenant: tenantId });
+        const maintenance = await Maintenance.find({ tenant: tenantId });
+
+        res.json({
+            property,
+            rentAmount: property?.rentAmount,
+            maintenance,
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Dashboard error' });
+    }
+};
+
+const Society = require('../models/Society');
+const Request = require('../models/Request');
+
+exports.getAdminDashboard = async (req, res) => {
+    try {
+        const societies = await Society.find();
+        const users = await User.find();
+        const maintenance = await Maintenance.find();
+        const requests = await Request.find();
+
+        const totalDue = maintenance.filter(m => m.status === 'unpaid' || m.status === 'late').length;
+
+        res.json({
+            societiesCount: societies.length,
+            usersCount: users.length,
+            owners: users.filter(u => u.role === 'owner').length,
+            tenants: users.filter(u => u.role === 'tenant').length,
+            requestsCount: requests.length,
+            totalDue
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Dashboard error' });
+    }
+};
+
+ /maintenanceController
+   const Maintenance = require('../models/Maintenance');
+
+exports.createMaintenance = async (req, res) => {
+    try {
+        const { flat, amount, month, dueDate, tenant, society } = req.body;
+
+        const maintenance = await Maintenance.create({
+            flat,
+            amount,
+            month,
+            dueDate,
+            tenant,
+            society,
+            status: 'unpaid'
+        });
+
+        res.status(201).json(maintenance);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error creating maintenance' });
+    }
+};
+
+exports.getMaintenanceByTenant = async (req, res) => {
+    try {
+        const tenantId = req.user._id;
+
+        const records = await Maintenance.find({ tenant: tenantId })
+            .populate('flat', 'title address')
+            .populate('society', 'name');
+
+        res.json(records);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching records' });
+    }
+};
+
+exports.updatePaymentStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        const record = await Maintenance.findById(id);
+        if (!record) return res.status(404).json({ message: 'Record not found' });
+
+        record.status = status;
+        if (status === 'paid') {
+            record.paidDate = new Date();
+        }
+
+        await record.save();
+
+        res.json({ message: 'Status updated', record });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error updating status' });
+    }
+};
+
+ /propertyController
+   const Property = require('../models/Property');
 
 exports.createProperty = async (req, res) => {
     try {
@@ -137,51 +258,187 @@ exports.getMyProperties = async (req, res) => {
     }
 };
 
+ /societyController
+  const Society = require('../models/Society');
 
-/middleware/authMiddleware.js-
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+exports.createSociety = async (req, res) => {
+    try {
+        const { name, address } = req.body;
 
-exports.protect = async (req, res, next) => {
-    let token;
+        const society = await Society.create({
+            name,
+            address,
+            admin: req.user._id
+        });
 
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-        try {
-            token = req.headers.authorization.split(' ')[1];
-
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-            req.user = await User.findById(decoded.id).select('-password');
-
-            next();
-        } catch (error) {
-            console.error(error);
-            res.status(401).json({ message: 'Not authorized, token failed' });
-        }
-    }
-
-    if (!token) {
-        res.status(401).json({ message: 'Not authorized, no token' });
+        res.status(201).json(society);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
     }
 };
 
-/models/Property.js -
-const mongoose = require('mongoose');
+exports.getMySocieties = async (req, res) => {
+    try {
+        const societies = await Society.find({ admin: req.user._id });
+        res.json(societies);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
 
-const propertySchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    description: { type: String },
-    address: { type: String, required: true },
-    rentAmount: { type: Number, required: true },
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    isRented: { type: Boolean, default: false },
-    tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-}, { timestamps: true });
+ /paymentController
+   // controllers/paymentController.js
+const Transaction = require('../models/Transaction');
+const Property = require('../models/Property');
+const Maintenance = require('../models/Maintenance');
 
-module.exports = mongoose.model('Property', propertySchema);
+exports.payRent = async (req, res) => {
+    try {
+        const { propertyId, amount } = req.body;
+        const userId = req.user._id;
 
-/models/User.js -
-const mongoose = require('mongoose');
+        const property = await Property.findById(propertyId);
+        if (!property || !property.tenant.equals(userId)) {
+            return res.status(403).json({ message: 'Unauthorized or invalid property' });
+        }
+
+        const transaction = await Transaction.create({
+            user: userId,
+            type: 'rent',
+            amount,
+            referenceId: propertyId,
+        });
+
+        res.json({ message: 'Rent payment recorded', transaction });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error recording rent payment' });
+    }
+};
+
+exports.payMaintenance = async (req, res) => {
+    try {
+        const { maintenanceId, amount } = req.body;
+        const userId = req.user._id;
+
+        const maintenance = await Maintenance.findById(maintenanceId);
+        if (!maintenance || !maintenance.tenant.equals(userId)) {
+            return res.status(403).json({ message: 'Unauthorized or invalid maintenance record' });
+        }
+
+        await Maintenance.findByIdAndUpdate(maintenanceId, {
+            status: 'paid',
+            paidDate: new Date()
+        });
+
+        const transaction = await Transaction.create({
+            user: userId,
+            type: 'maintenance',
+            amount,
+            referenceId: maintenanceId,
+        });
+
+        res.json({ message: 'Maintenance payment recorded', transaction });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error recording maintenance payment' });
+    }
+};
+
+exports.getTransactions = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        const transactions = await Transaction.find({ user: userId }).sort({ createdAt: -1 });
+
+        res.json(transactions);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching transactions' });
+    }
+};
+
+ /requestController
+   const Request = require('../models/Request');
+
+// Create a new maintenance request (tenant)
+exports.createRequest = async (req, res) => {
+    try {
+        const { title, description, flat, society } = req.body;
+
+        const request = await Request.create({
+            title,
+            description,
+            flat,
+            society,
+            tenant: req.user._id
+        });
+
+        res.status(201).json(request);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error creating request' });
+    }
+};
+
+// View requests for current tenant
+exports.getMyRequests = async (req, res) => {
+    try {
+        const requests = await Request.find({ tenant: req.user._id })
+            .populate('flat', 'title address')
+            .populate('society', 'name')
+            .sort({ createdAt: -1 });
+
+        res.json(requests);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching requests' });
+    }
+};
+
+// Admin: View all requests in society
+exports.getSocietyRequests = async (req, res) => {
+    try {
+        const { societyId } = req.params;
+
+        const requests = await Request.find({ society: societyId })
+            .populate('tenant', 'name email')
+            .populate('flat', 'title address');
+
+        res.json(requests);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching society requests' });
+    }
+};
+
+// Admin: Update request status
+exports.updateRequestStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, feedback, assignedTo } = req.body;
+
+        const request = await Request.findById(id);
+        if (!request) return res.status(404).json({ message: 'Request not found' });
+
+        request.status = status;
+        request.feedback = feedback || request.feedback;
+        request.assignedTo = assignedTo || request.assignedTo;
+
+        if (status === 'resolved') {
+            request.resolvedAt = new Date();
+        }
+
+        await request.save();
+        res.json({ message: 'Request updated', request });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating request' });
+    }
+};
+
+
+/models
+ /User
+  const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -192,58 +449,91 @@ const userSchema = new mongoose.Schema({
 
 module.exports = mongoose.model('User', userSchema);
 
-/routes/authRoutes.js
-const express = require('express');
-const { register, login } = require('../controllers/authController');
-const router = express.Router();
+ /Transaction
+  // models/Transaction.js
+const mongoose = require('mongoose');
 
-router.post('/register', register);
-router.post('/login', login);
+const transactionSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    type: { type: String, enum: ['rent', 'maintenance'], required: true },
+    amount: { type: Number, required: true },
+    referenceId: { type: mongoose.Schema.Types.ObjectId, required: true }, // propertyId or maintenanceId
+    paymentDate: { type: Date, default: Date.now },
+    status: { type: String, enum: ['success', 'failed'], default: 'success' },
+}, { timestamps: true });
 
-module.exports = router;
+module.exports = mongoose.model('Transaction', transactionSchema);
 
-/routes/propertyRputes.js
-const express = require('express');
-const { createProperty, getProperties, rentProperty, getMyProperties } = require('../controllers/propertyController');
+ /Society
+   const mongoose = require('mongoose');
+
+const societySchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    address: { type: String, required: true },
+    admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+}, { timestamps: true });
+
+module.exports = mongoose.model('Society', societySchema);
+
+ /Request
+   const mongoose = require('mongoose');
+
+const requestSchema = new mongoose.Schema({
+    title: { type: String, required: true },                // e.g., "Leaking tap"
+    description: { type: String },                          // Optional details
+    status: {
+        type: String,
+        enum: ['pending', 'in-progress', 'resolved'],
+        default: 'pending'
+    },
+    flat: { type: mongoose.Schema.Types.ObjectId, ref: 'Property', required: true },
+    tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    society: { type: mongoose.Schema.Types.ObjectId, ref: 'Society', required: true },
+    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Admin/staff
+    feedback: { type: String },
+    resolvedAt: { type: Date }
+}, { timestamps: true });
+
+module.exports = mongoose.model('Request', requestSchema);
+
+ /Property
+   const mongoose = require('mongoose');
+
+const propertySchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    description: { type: String },
+    society: { type: mongoose.Schema.Types.ObjectId, ref: 'Society', required: true },
+    address: { type: String, required: true },
+    rentAmount: { type: Number, required: true },
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    isRented: { type: Boolean, default: false },
+    tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+}, { timestamps: true });
+
+module.exports = mongoose.model('Property', propertySchema);
+
+ /Maintenance
+   const mongoose = require('mongoose');
+
+const maintenanceSchema = new mongoose.Schema({
+    flat: { type: mongoose.Schema.Types.ObjectId, ref: 'Property', required: true },
+    amount: { type: Number, required: true },
+    month: { type: String, required: true }, // Example: 'June 2025'
+    status: { type: String, enum: ['unpaid', 'paid', 'late'], default: 'unpaid' },
+    dueDate: { type: Date, required: true },
+    paidDate: { type: Date },
+    tenant: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    society: { type: mongoose.Schema.Types.ObjectId, ref: 'Society', required: true }
+}, { timestamps: true });
+
+module.exports = mongoose.model('Maintenance', maintenanceSchema);
 
 
-const { protect } = require('../middleware/authMiddleware');
-
-
-const router = express.Router();
-
-router.post('/', protect, createProperty);
-router.get('/', getProperties);
-router.put('/:id/rent', protect, rentProperty);
-router.get('/my', protect, getMyProperties);
-
-
-
-module.exports = router;
-
-
-/server.js - 
-const express = require('express');
-const cors = require('cors');
-const connectDB = require('./config/db');
-const authRoutes = require('./routes/authRoutes');
-const propertyRoutes = require('./routes/propertyRoutes');
-require('dotenv').config();
-
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Connect Database
-connectDB();
-
-// Routes
-app.use('/api/auth', authRoutes);
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(Server running on port ${PORT}));
-app.use('/api/properties', propertyRoutes);
-
-other files are node module , .env(which has database url),.gitignore, package.json, package-lock.json  
+/routes
+ /authRoutes
+ /dashboardRoutes
+ /maintenanceRoutes
+ /propertyRoutes
+ /societyRoutes
+ /paymentRoutes
+ /requestRoutes
