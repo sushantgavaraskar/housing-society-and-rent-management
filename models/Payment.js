@@ -1,35 +1,35 @@
-// models/paymentModel.js
 const mongoose = require('mongoose');
 
 const paymentSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    required: true
   },
   society: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Society',
-    required: true,
+    required: true
   },
   amount: {
     type: Number,
     required: true,
+    min: 0
   },
   paymentType: {
     type: String,
     enum: ['rent', 'maintenance'],
-    required: true,
+    required: true
   },
   date: {
     type: Date,
-    default: Date.now,
+    default: Date.now
   },
   status: {
     type: String,
     enum: ['pending', 'completed', 'failed'],
-    default: 'completed',
-  },
+    default: 'completed'
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Payment', paymentSchema);

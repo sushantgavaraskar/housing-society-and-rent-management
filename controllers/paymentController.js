@@ -1,8 +1,8 @@
 // controllers/paymentController.js
-const Payment = require('../models/paymentModel');
+const Payment = require('../models/Payment');
 
 // Tenant makes a payment
-const makePayment = async (req, res) => {
+exports.makePayment = async (req, res, next) => {
   try {
     const { amount, paymentType, societyId } = req.body;
     const userId = req.user._id;
@@ -16,7 +16,8 @@ const makePayment = async (req, res) => {
       society: societyId,
       amount,
       paymentType,
-      status: 'completed',
+      status: 'completed', // you may want to add logic to handle 'pending' or 'failed'
+      // date will default to Date.now automatically
     });
 
     await payment.save();
@@ -29,16 +30,22 @@ const makePayment = async (req, res) => {
 };
 
 // Get payment history (all roles)
-const getPayments = async (req, res) => {
+exports.getPayments = async (req, res , next) => {
   try {
     const userId = req.user._id;
     const role = req.user.role;
 
     let payments;
+
     if (role === 'admin') {
-      payments = await Payment.find().populate('user', 'name email').populate('society', 'name');
+      payments = await Payment.find()
+        .populate('user', 'name email')
+        .populate('society', 'name')
+        .sort({ date: -1 });
     } else {
-      payments = await Payment.find({ user: userId }).populate('society', 'name');
+      payments = await Payment.find({ user: userId })
+        .populate('society', 'name')
+        .sort({ date: -1 });
     }
 
     res.status(200).json(payments);
@@ -48,4 +55,4 @@ const getPayments = async (req, res) => {
   }
 };
 
-module.exports = { makePayment, getPayments };
+

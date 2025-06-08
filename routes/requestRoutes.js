@@ -13,5 +13,5 @@ router.post('/', authenticateUser, authorizeRoles('tenant'), createRequest);
 router.get('/my', authenticateUser, authorizeRoles('tenant'), getMyRequests);
 router.get('/society/:id', authenticateUser, authorizeRoles('admin'), getRequestsBySociety);
 router.put('/:id/status', authenticateUser, authorizeRoles('admin'), updateRequestStatus);
-
+router.get('/complaints/society', authenticateUser, authorizeRoles('admin'), getAllComplaintsGroupedBySociety);
 module.exports = router;

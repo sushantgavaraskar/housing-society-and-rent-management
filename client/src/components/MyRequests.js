@@ -44,11 +44,9 @@ const MyRequests = () => {
                   <td>{index + 1}</td>
                   <td>{req.description}</td>
                   <td>
-                    {req.status === 'pending' ? (
-                      <span className="badge bg-warning">Pending</span>
-                    ) : (
-                      <span className="badge bg-success">Resolved</span>
-                    )}
+                    <span className={`badge ${req.status === 'pending' ? 'bg-warning' : 'bg-success'}`}>
+                      {req.status}
+                    </span>
                   </td>
                   <td>{new Date(req.createdAt).toLocaleString()}</td>
                 </tr>

@@ -21,9 +21,7 @@ const MyProperties = () => {
   return (
     <div className="card p-4 mt-4 shadow">
       <h4>My Properties</h4>
-
       {error && <div className="alert alert-danger">{error}</div>}
-
       {properties.length === 0 ? (
         <p>No properties found.</p>
       ) : (
@@ -44,8 +42,8 @@ const MyProperties = () => {
                   <td>{prop.name}</td>
                   <td>{prop.address}</td>
                   <td>₹{prop.rentAmount}</td>
-                  <td>{prop.society?.name || prop.society || 'N/A'}</td>
-                  <td>{prop.tenant ? prop.tenant.name : 'Not Assigned'}</td>
+                  <td>{prop.society?.name || 'N/A'}</td>
+                  <td>{prop.tenant?.name || 'Not Assigned'}</td>
                 </tr>
               ))}
             </tbody>

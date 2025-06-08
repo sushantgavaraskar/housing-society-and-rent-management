@@ -4,6 +4,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import RaiseRequestForm from '../components/RaiseRequestForm';
 import MyRequests from '../components/MyRequests';
 import PaymentForm from '../components/PaymentForm';
+import PaymentHistory from '../components/PaymentHistory';
 
 const TenantDashboard = () => {
   const { user } = useContext(AuthContext);
@@ -51,6 +52,7 @@ const TenantDashboard = () => {
       <MyRequests />
       <PaymentForm type="rent" />
       <PaymentForm type="maintenance" />
+      <PaymentHistory />
 
     </div>
   );

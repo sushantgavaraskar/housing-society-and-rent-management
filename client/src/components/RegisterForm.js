@@ -6,26 +6,29 @@ const RegisterForm = () => {
   const [formData, setFormData] = useState({
     name: '', email: '', password: '', role: 'tenant'
   });
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({...formData, [e.target.name]: e.target.value });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       await api.post('/auth/register', formData);
       alert('Registration successful!');
       navigate('/');
     } catch (err) {
-      alert('Registration failed');
+      setError(err.response?.data?.message || 'Registration failed.');
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="container mt-4">
       <h3>Register</h3>
+      {error && <div className="alert alert-danger">{error}</div>}
       <div className="mb-3">
         <label>Name</label>
         <input name="name" className="form-control" onChange={handleChange} required />

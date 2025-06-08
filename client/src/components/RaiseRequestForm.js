@@ -11,15 +11,15 @@ const RaiseRequestForm = ({ onSuccess }) => {
     setLoading(true);
     setMsg('');
     try {
-      const res = await api.post('/requests', { description });
+      await api.post('/requests', { description });
       setMsg('Request raised successfully!');
       setDescription('');
       if (onSuccess) onSuccess();
     } catch (err) {
-      console.error('Error raising request:', err);
-      setMsg('Failed to raise request.');
+      setMsg(err.response?.data?.message || 'Failed to raise request.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -29,10 +29,9 @@ const RaiseRequestForm = ({ onSuccess }) => {
         {msg && <div className="alert alert-info">{msg}</div>}
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label htmlFor="desc" className="form-label">Request Description</label>
+            <label className="form-label">Request Description</label>
             <textarea
               className="form-control"
-              id="desc"
               rows="3"
               value={description}
               onChange={(e) => setDescription(e.target.value)}

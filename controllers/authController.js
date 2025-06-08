@@ -29,7 +29,7 @@ exports.login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if (!user || !(await user.matchPassword(password)))
+    if (!user || !(await user.comparePassword(password)))
       return res.status(400).json({ message: 'Invalid credentials' });
 
     res.json({

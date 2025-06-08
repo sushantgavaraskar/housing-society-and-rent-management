@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 
 const AddMaintenanceForm = () => {
@@ -8,9 +8,9 @@ const AddMaintenanceForm = () => {
   const [date, setDate] = useState('');
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
-  const [societies, setSocieties] = React.useState([]);
+  const [societies, setSocieties] = useState([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchSocieties = async () => {
       try {
         const res = await api.get('/societies');
@@ -49,7 +49,6 @@ const AddMaintenanceForm = () => {
     <div className="card mt-4">
       <div className="card-header">Add Maintenance Record</div>
       <div className="card-body">
-        {msg && <div className="alert alert-info">{msg}</div>}
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
             <label htmlFor="society" className="form-label">Society</label>
@@ -103,6 +102,8 @@ const AddMaintenanceForm = () => {
               required
             />
           </div>
+
+          {msg && <p className={`mt-2 fw-bold ${msg.includes('successfully') ? 'text-success' : 'text-danger'}`}>{msg}</p>}
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
             {loading ? 'Adding...' : 'Add Maintenance'}

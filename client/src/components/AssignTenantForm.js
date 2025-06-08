@@ -13,7 +13,7 @@ const AssignTenantForm = () => {
       try {
         const [propRes, tenantRes] = await Promise.all([
           api.get('/properties/my'),
-          api.get('/auth/tenants'), // You must have this route returning all tenant users
+          api.get('/auth/tenants'),
         ]);
         setProperties(propRes.data);
         setTenants(tenantRes.data);
@@ -49,9 +49,7 @@ const AssignTenantForm = () => {
   return (
     <div className="card p-4 mt-4 shadow">
       <h4>Assign Tenant to Property</h4>
-
       {message && <div className="alert alert-info mt-2">{message}</div>}
-
       <form onSubmit={handleSubmit}>
         <div className="mb-3">
           <label>Select Property</label>
