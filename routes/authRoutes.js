@@ -1,10 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getAllTenants } = require('../controllers/authController');
-const { authenticateUser, authorizeRoles } = require('../middleware/authMiddleware');
+const authController = require('../controllers/authController');
 
-router.post('/register', register);
-router.post('/login', login);
-router.get('/tenants', authenticateUser, authorizeRoles('owner', 'admin'), getAllTenants);
+const authMiddleware = require('../middleware/authMiddleware');
+const {registerValidation, loginValidation} = require('../validations/userValidation')
 
+
+router.post('/register', registerValidation, authController.registerUser);
+router.post('/login', loginValidation, authController.loginUser);
+
+// Protected Routes
+router.post('/logout', authMiddleware, authController.logoutUser);
+router.get('/me', authMiddleware, authController.getMe);
+router.put('/change-password', authMiddleware, authController.changePassword);
+router.get('/token-status', authMiddleware, authController.tokenStatus);
 module.exports = router;

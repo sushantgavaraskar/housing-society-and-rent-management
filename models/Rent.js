@@ -1,8 +1,8 @@
-// models/Maintenance.js
+// models/Rent.js
 
 const mongoose = require('mongoose');
 
-const maintenanceSchema = new mongoose.Schema({
+const rentSchema = new mongoose.Schema({
   flat: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Flat',
@@ -18,15 +18,25 @@ const maintenanceSchema = new mongoose.Schema({
     ref: 'Society',
     required: true,
   },
+  tenant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Tenant reference is required'],
+  },
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: [true, 'Owner reference is required'],
+  },
   billingMonth: {
     type: String,
     required: [true, 'Billing month is required'],
     match: [/^\d{4}-(0[1-9]|1[0-2])$/, 'Format must be YYYY-MM'],
     // Example: "2025-06"
   },
-  amount: {
+  rentAmount: {
     type: Number,
-    required: [true, 'Maintenance amount is required'],
+    required: [true, 'Rent amount is required'],
     min: 0,
   },
   isPaid: {
@@ -37,13 +47,13 @@ const maintenanceSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
-  generatedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Typically an Admin
-    required: true,
+  paymentMode: {
+    type: String,
+    enum: ['cash', 'online', 'bank-transfer', 'upi'],
+    default: 'online',
   },
 }, {
   timestamps: true,
 });
 
-module.exports = mongoose.model('Maintenance', maintenanceSchema);
+module.exports = mongoose.model('Rent', rentSchema);

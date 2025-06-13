@@ -1,48 +1,70 @@
-// ==== server.js ====
+// ✅ PATCHED: server.js with all routes
 const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
 const dotenv = require('dotenv');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
+const mongoose = require('mongoose');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+// const mongoSanitize = require('express-mongo-sanitize');
+// const xss = require('xss-clean');
+const compression = require('compression');
+
+const connectDB = require('./config/db');
+const { errorHandler } = require('./middleware/errorHandler');
+
+// Route Imports
 const authRoutes = require('./routes/authRoutes');
-const propertyRoutes = require('./routes/propertyRoutes');
-const societyRoutes = require('./routes/societyRoutes');
-const maintenanceRoutes = require('./routes/maintenanceRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
-const requestRoutes = require('./routes/requestRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const errorHandler = require('./middleware/errorHandler');
+const adminRoutes = require('./routes/adminRoutes');
+const ownerRoutes = require('./routes/ownerRoutes');
+const tenantRoutes = require('./routes/tenantRoutes');
+const complaintRoutes = require('./routes/complaintRoutes');
+const announcementRoutes = require('./routes/announcementRoutes');
+const ownershipRequestRoutes = require('./routes/ownershipRequestRoutes');
 
 dotenv.config();
+connectDB();
+
 const app = express();
 
-app.use(cors());
+// === Global Middleware ===
+app.use(helmet());
+// app.use(xss());
+// app.use(mongoSanitize());
+app.use(compression());
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: 'Too many requests from this IP, try again later.'
+}));
+
 app.use(express.json());
+app.use(cookieParser());
 
-// Routes
+// ✅ CORS for dev/prod
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  credentials: true,
+}));
+
+// === Routes ===
 app.use('/api/auth', authRoutes);
-app.use('/api/properties', propertyRoutes);
-app.use('/api/societies', societyRoutes);
-app.use('/api/maintenance', maintenanceRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/requests', requestRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/owner', ownerRoutes);
+app.use('/api/tenant', tenantRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/announcements', announcementRoutes); // ✅ Added
+app.use('/api/ownership-requests', ownershipRequestRoutes); // ✅ Added
 
-// Error handler
+// Default Route
+app.get('/', (req, res) => {
+  res.send('Housing Society & Rent Management System API is running');
+});
+
+// Error Handler
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
-
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
-    console.log('✅ Successfully connected to MongoDB');
-    // Start the server only after DB is connected
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error('❌ MongoDB connection error:', err.message);
-    process.exit(1); // Exit if DB connection fails
-  });
+app.listen(PORT, () => {
+  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+});
