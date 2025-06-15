@@ -16,7 +16,7 @@ router.delete('/buildings/:id', adminController.deleteBuilding);
 // Flat management
 router.patch('/flats/:flatId/assign-owner', adminController.assignFlatOwner);
 router.patch('/flats/:flatId/remove-owner', adminController.removeFlatOwner);
-router.patch('/flats/:flatId/assign-tenant', adminController.assignFlatTenant);
+// router.patch('/flats/:flatId/assign-tenant', adminController.assignFlatTenant);
 router.patch('/flats/:flatId/remove-tenant', adminController.removeFlatTenant);
 
 // Maintenance

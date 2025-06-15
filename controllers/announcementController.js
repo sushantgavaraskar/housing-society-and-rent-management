@@ -1,56 +1,84 @@
-// controllers/announcementController.js
-
 const Announcement = require('../models/Announcement');
-const Society = require('../models/Society');
+const Flat = require('../models/Flat');
+const formatResponse = require('../utils/responseFormatter');
 
-// Create a new announcement (Admin only)
+// Create a new announcement
 exports.createAnnouncement = async (req, res, next) => {
   try {
-    const { title, message, society, building, audience, validTill } = req.body;
+    const { title, message, audience, society, building, validTill } = req.body;
 
-    const newAnnouncement = await Announcement.create({
+    const announcement = await Announcement.create({
       title,
       message,
+      audience,
       society,
       building: building || null,
-      audience,
       validTill: validTill || null,
       createdBy: req.user._id,
     });
 
-    res.status(201).json({ message: 'Announcement created successfully', data: newAnnouncement });
+    res.status(201).json(formatResponse({
+      message: 'Announcement created',
+      data: announcement
+    }));
   } catch (err) {
     next(err);
   }
 };
 
-// Get all announcements for a society or building
-exports.getAnnouncements = async (req, res, next) => {
+// Get announcements for logged-in user based on role and society/building
+exports.getMyAnnouncements = async (req, res, next) => {
   try {
-    const { societyId } = req.params;
-    const { buildingId } = req.query;
+    const flat = await Flat.findOne({
+      $or: [
+        { tenant: req.user._id },
+        { owner: req.user._id }
+      ]
+    });
 
-    const filter = { society: societyId };
-    if (buildingId) filter.building = buildingId;
-
-    const announcements = await Announcement.find(filter).sort({ createdAt: -1 });
-
-    res.status(200).json({ count: announcements.length, announcements });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Delete an announcement (Admin only)
-exports.deleteAnnouncement = async (req, res, next) => {
-  try {
-    const announcement = await Announcement.findById(req.params.id);
-    if (!announcement) {
-      return res.status(404).json({ message: 'Announcement not found' });
+    if (!flat) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'No assigned flat found',
+        statusCode: 404
+      }));
     }
 
-    await announcement.deleteOne();
-    res.status(200).json({ message: 'Announcement deleted successfully' });
+    const announcements = await Announcement.find({
+      society: flat.society,
+      $or: [
+        { audience: 'all' },
+        { audience: req.user.role },
+        { building: null },
+        { building: flat.building }
+      ],
+      $or: [
+        { validTill: null },
+        { validTill: { $gte: new Date() } }
+      ]
+    }).sort({ createdAt: -1 });
+
+    res.status(200).json(formatResponse({
+      message: 'Relevant announcements retrieved',
+      data: announcements
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Get all announcements (admin use)
+exports.getAllAnnouncements = async (req, res, next) => {
+  try {
+    const announcements = await Announcement.find()
+      .populate('createdBy', 'name email role')
+      .populate('society', 'name')
+      .populate('building', 'name');
+
+    res.status(200).json(formatResponse({
+      message: 'All announcements retrieved',
+      data: announcements
+    }));
   } catch (err) {
     next(err);
   }

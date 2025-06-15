@@ -1,22 +1,23 @@
-// controllers/ownershipRequestController.js
-
 const OwnershipRequest = require('../models/OwnershipRequest');
 const Flat = require('../models/Flat');
-const User = require('../models/User');
-const sendEmail = require('../utils/sendEmail');
+const formatResponse = require('../utils/responseFormatter');
 
-// Owner submits a request to transfer ownership
-exports.createOwnershipRequest = async (req, res, next) => {
+// Submit ownership request
+exports.submitOwnershipRequest = async (req, res, next) => {
   try {
-    const { flat, newOwnerName, newOwnerEmail, newOwnerPhone, reason } = req.body;
+    const { flatId, newOwnerName, newOwnerEmail, newOwnerPhone, reason } = req.body;
 
-    const flatExists = await Flat.findById(flat);
-    if (!flatExists || !flatExists.owner.equals(req.user._id)) {
-      return res.status(400).json({ message: 'Invalid flat or permission denied.' });
+    const flat = await Flat.findById(flatId);
+    if (!flat || flat.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json(formatResponse({
+        success: false,
+        message: 'Unauthorized request',
+        statusCode: 403
+      }));
     }
 
     const request = await OwnershipRequest.create({
-      flat,
+      flat: flatId,
       currentOwner: req.user._id,
       newOwnerName,
       newOwnerEmail,
@@ -24,80 +25,76 @@ exports.createOwnershipRequest = async (req, res, next) => {
       reason,
     });
 
-    // Send confirmation email to the owner
-    await sendEmail(
-      req.user.email,
-      'Ownership Transfer Request Submitted',
-      `Hi ${req.user.name},\n\nYour ownership transfer request for Flat ${flatExists.flatNumber} has been submitted.\n\nWe will notify you once it's reviewed.\n\n- Housing Society Admin`
-    );
-
-    res.status(201).json({ message: 'Ownership transfer request submitted.', data: request });
+    res.status(201).json(formatResponse({
+      message: 'Ownership request submitted',
+      data: request
+    }));
   } catch (err) {
     next(err);
   }
 };
 
-// Admin fetches all ownership requests
+// Get ownership requests submitted by owner
+exports.getMyOwnershipRequests = async (req, res, next) => {
+  try {
+    const requests = await OwnershipRequest.find({ currentOwner: req.user._id })
+      .populate('flat');
+
+    res.status(200).json(formatResponse({
+      message: 'Your ownership requests retrieved',
+      data: requests
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Get all ownership requests (admin use)
 exports.getAllOwnershipRequests = async (req, res, next) => {
   try {
     const requests = await OwnershipRequest.find()
-      .populate('flat', 'flatNumber')
+      .populate('flat')
       .populate('currentOwner', 'name email');
 
-    res.status(200).json({ count: requests.length, requests });
+    res.status(200).json(formatResponse({
+      message: 'All ownership requests retrieved',
+      data: requests
+    }));
   } catch (err) {
     next(err);
   }
 };
 
-// Admin approves or rejects ownership request
-exports.updateOwnershipRequestStatus = async (req, res, next) => {
+// Review ownership request (admin)
+exports.reviewOwnershipRequest = async (req, res, next) => {
   try {
-    const { id } = req.params;
-    const { status, adminNote } = req.body;
+    const { requestId, status, note } = req.body;
 
-    const request = await OwnershipRequest.findById(id).populate('flat');
+    const request = await OwnershipRequest.findById(requestId);
     if (!request) {
-      return res.status(404).json({ message: 'Ownership request not found' });
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'Request not found',
+        statusCode: 404
+      }));
     }
 
     request.status = status;
-    request.adminNote = adminNote || '';
+    request.adminNote = note;
     request.reviewedBy = req.user._id;
     request.reviewedOn = new Date();
     await request.save();
 
-    // If approved, reset flat ownership and tenancy
     if (status === 'approved') {
-      const flat = await Flat.findById(request.flat._id);
-      flat.owner = null;
-      flat.tenant = null;
-      flat.isRented = false;
-      flat.occupancyStatus = 'vacant';
-      await flat.save();
+      await Flat.findByIdAndUpdate(request.flat, {
+        owner: request.currentOwner
+      });
     }
 
-    // Notify the owner via email
-    const owner = await User.findById(request.currentOwner);
-    await sendEmail(
-      owner.email,
-      `Ownership Request ${status === 'approved' ? 'Approved' : 'Rejected'}`,
-      `Hi ${owner.name},\n\nYour ownership request for Flat ${request.flat.flatNumber} has been ${status}.\n\nAdmin Note: ${adminNote || 'No additional notes'}\n\n- Housing Society Admin`
-    );
-
-    res.status(200).json({ message: `Request ${status} successfully.`, request });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Owner fetches their ownership requests
-exports.getMyOwnershipRequests = async (req, res, next) => {
-  try {
-    const requests = await OwnershipRequest.find({ currentOwner: req.user._id })
-      .populate('flat', 'flatNumber');
-
-    res.status(200).json({ count: requests.length, requests });
+    res.status(200).json(formatResponse({
+      message: `Ownership request ${status}`,
+      data: request
+    }));
   } catch (err) {
     next(err);
   }

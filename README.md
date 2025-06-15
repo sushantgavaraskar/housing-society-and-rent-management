@@ -14,8 +14,7 @@ Housing Society Management
 ├─ middleware
 │  ├─ authMiddleware.js
 │  ├─ errorHandler.js
-│  ├─ notFound.js
-│  ├─ roleAccessGuard
+│  ├─ roleAccessGuard.js
 │  └─ roleMiddleware.js
 ├─ models
 │  ├─ Announcement.js
@@ -29,7 +28,6 @@ Housing Society Management
 │  └─ User.js
 ├─ package-lock.json
 ├─ package.json
-├─ project_dump.txt
 ├─ README.md
 ├─ routes
 │  ├─ adminRoutes.js
@@ -41,11 +39,10 @@ Housing Society Management
 │  └─ tenantRoutes.js
 ├─ server.js
 ├─ uploads
-├─ utils
-│  ├─ generateToken.js
-│  ├─ invoiceGenerator.js
-│  └─ sendEmail.js
-└─ validations
-   └─ userValidation.js
+└─ utils
+   ├─ generateToken.js
+   ├─ invoiceGenerator.js
+   ├─ responseFormatter.js
+   └─ sendEmail.js
 
 ```

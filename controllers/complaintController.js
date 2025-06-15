@@ -1,88 +1,128 @@
-// controllers/complaintController.js
-
 const Complaint = require('../models/Complaint');
 const Flat = require('../models/Flat');
-const sendEmail = require('../utils/sendEmail');
+const formatResponse = require('../utils/responseFormatter');
 
-// @desc    Get all complaints in the society (admin)
-// @route   GET /api/complaints/all
+// Get all complaints (for admin)
 exports.getAllComplaints = async (req, res, next) => {
   try {
-    const complaints = await Complaint.find({})
+    const complaints = await Complaint.find()
       .populate('raisedBy', 'name email role')
-      .populate('flat', 'flatNumber')
-      .populate('building', 'name')
-      .populate('society', 'name')
-      .sort({ createdAt: -1 });
+      .populate('flat')
+      .populate('building')
+      .populate('society');
 
-    res.status(200).json(complaints);
-  } catch (error) {
-    next(error);
+    res.status(200).json(formatResponse({
+      message: 'All complaints retrieved',
+      data: complaints
+    }));
+  } catch (err) {
+    next(err);
   }
 };
 
-// @desc    Get complaints for a specific building (admin or owner)
-// @route   GET /api/complaints/building/:buildingId
-exports.getComplaintsByBuilding = async (req, res, next) => {
+// Get single complaint by ID
+exports.getComplaintById = async (req, res, next) => {
   try {
-    const { buildingId } = req.params;
-
-    const complaints = await Complaint.find({ building: buildingId })
+    const complaint = await Complaint.findById(req.params.id)
       .populate('raisedBy', 'name email role')
-      .populate('flat', 'flatNumber')
-      .populate('building', 'name')
-      .populate('society', 'name')
-      .sort({ createdAt: -1 });
+      .populate('flat')
+      .populate('building')
+      .populate('society');
 
-    res.status(200).json(complaints);
-  } catch (error) {
-    next(error);
-  }
-};
-
-// @desc    Mark complaint as resolved (admin/owner)
-// @route   PUT /api/complaints/:id/resolve
-exports.resolveComplaint = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-
-    const complaint = await Complaint.findById(id);
     if (!complaint) {
-      return res.status(404).json({ message: 'Complaint not found' });
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'Complaint not found',
+        statusCode: 404
+      }));
     }
 
-    complaint.status = 'resolved';
+    res.status(200).json(formatResponse({
+      message: 'Complaint retrieved',
+      data: complaint
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Update complaint status (Admin)
+exports.updateComplaint = async (req, res, next) => {
+  try {
+    const { status, adminNote } = req.body;
+
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'Complaint not found',
+        statusCode: 404
+      }));
+    }
+
+    complaint.status = status || complaint.status;
+    complaint.adminNote = adminNote || complaint.adminNote;
+    complaint.resolvedBy = req.user._id;
+    complaint.resolvedOn = new Date();
+
     await complaint.save();
 
-    // Notify the user via email
-    await complaint.populate('raisedBy', 'email name');
-    await sendEmail(
-      complaint.raisedBy.email,
-      'Your Complaint has been Resolved',
-      `Hi ${complaint.raisedBy.name},\n\nYour complaint titled "${complaint.title}" has been resolved.\n\nThank you for your patience.\n\n- Housing Society Management`
-    );
-
-
-    res.status(200).json({ message: 'Complaint marked as resolved', complaint });
-  } catch (error) {
-    next(error);
+    res.status(200).json(formatResponse({
+      message: 'Complaint updated successfully',
+      data: complaint
+    }));
+  } catch (err) {
+    next(err);
   }
 };
 
-// @desc    Delete a complaint (admin only)
-// @route   DELETE /api/complaints/:id
-exports.deleteComplaint = async (req, res, next) => {
+// Get complaints by current user (if needed here too)
+exports.getMyComplaints = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const complaints = await Complaint.find({ raisedBy: req.user._id })
+      .populate('flat')
+      .populate('building')
+      .populate('society');
 
-    const complaint = await Complaint.findById(id);
-    if (!complaint) {
-      return res.status(404).json({ message: 'Complaint not found' });
+    res.status(200).json(formatResponse({
+      message: 'My complaints retrieved',
+      data: complaints
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// File a new complaint
+exports.createComplaint = async (req, res, next) => {
+  try {
+    const { flatId, category, subject, description } = req.body;
+
+    const flat = await Flat.findById(flatId).populate('building').populate('society');
+    if (!flat) {
+      return res.status(400).json(formatResponse({
+        success: false,
+        message: 'Flat not found',
+        statusCode: 400
+      }));
     }
 
-    await complaint.remove();
-    res.status(200).json({ message: 'Complaint deleted successfully' });
-  } catch (error) {
-    next(error);
+    const complaint = await Complaint.create({
+      raisedBy: req.user._id,
+      userRole: req.user.role,
+      flat: flat._id,
+      building: flat.building._id,
+      society: flat.society._id,
+      category,
+      subject,
+      description
+    });
+
+    res.status(201).json(formatResponse({
+      message: 'Complaint created',
+      data: complaint
+    }));
+  } catch (err) {
+    next(err);
   }
 };
