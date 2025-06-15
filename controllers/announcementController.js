@@ -1,6 +1,6 @@
 const Announcement = require('../models/Announcement');
 const Flat = require('../models/Flat');
-const formatResponse = require('../utils/responseFormatter');
+const formatResponse = require('../utils/formatResponse');
 
 // Create a new announcement
 exports.createAnnouncement = async (req, res, next) => {
@@ -70,14 +70,16 @@ exports.getMyAnnouncements = async (req, res, next) => {
 // Get all announcements (admin use)
 exports.getAllAnnouncements = async (req, res, next) => {
   try {
-    const announcements = await Announcement.find()
-      .populate('createdBy', 'name email role')
-      .populate('society', 'name')
-      .populate('building', 'name');
+    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
+    const [announcements, total] = await Promise.all([
+      Announcement.find().populate('createdBy society building').skip(skip).limit(limit),
+      Announcement.countDocuments()
+    ]);
 
     res.status(200).json(formatResponse({
       message: 'All announcements retrieved',
-      data: announcements
+      data: announcements,
+      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
     }));
   } catch (err) {
     next(err);

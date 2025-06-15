@@ -3,7 +3,7 @@ const Complaint = require('../models/Complaint');
 const Maintenance = require('../models/Maintenance');
 const Rent = require('../models/Rent');
 const Announcement = require('../models/Announcement');
-const formatResponse = require('../utils/responseFormatter');
+const formatResponse = require('../utils/formatResponse');
 
 // 1. Get assigned flat
 exports.getMyFlat = async (req, res, next) => {
@@ -45,61 +45,38 @@ exports.getRentHistory = async (req, res, next) => {
 };
 
 // 3. Pay rent
+const { payRent } = require('../services/paymentService');
+
 exports.payRent = async (req, res, next) => {
   try {
-    const rent = await Rent.findById(req.params.rentId).populate('tenant');
-    if (!rent || rent.tenant._id.toString() !== req.user._id.toString()) {
-      return res.status(403).json(formatResponse({
-        success: false,
-        message: 'Unauthorized rent payment attempt',
-        statusCode: 403
-      }));
-    }
-
-    if (rent.isPaid) {
-      return res.status(400).json(formatResponse({
-        success: false,
-        message: 'Rent already paid',
-        statusCode: 400
-      }));
-    }
-
-    rent.isPaid = true;
-    rent.paidAt = new Date();
-    await rent.save();
+    const result = await payRent({
+      rentId: req.params.rentId,
+      userId: req.user._id
+    });
 
     res.status(200).json(formatResponse({
       message: 'Rent paid successfully',
-      data: rent
+      data: result
     }));
   } catch (err) {
     next(err);
   }
 };
 
+
 // 4. File complaint
+const { createComplaint } = require('../services/complaintService');
+
 exports.fileComplaint = async (req, res, next) => {
   try {
     const { flatId, category, subject, description } = req.body;
-
-    const flat = await Flat.findOne({ _id: flatId, tenant: req.user._id });
-    if (!flat) {
-      return res.status(403).json(formatResponse({
-        success: false,
-        message: 'Unauthorized access to flat',
-        statusCode: 403
-      }));
-    }
-
-    const complaint = await Complaint.create({
+    const complaint = await createComplaint({
       raisedBy: req.user._id,
       userRole: 'tenant',
-      flat: flat._id,
-      building: flat.building,
-      society: flat.society,
+      flatId,
       category,
       subject,
-      description,
+      description
     });
 
     res.status(201).json(formatResponse({
@@ -114,19 +91,23 @@ exports.fileComplaint = async (req, res, next) => {
 // 5. View own complaints
 exports.getMyComplaints = async (req, res, next) => {
   try {
-    const complaints = await Complaint.find({
-      raisedBy: req.user._id,
-      userRole: 'tenant'
-    }).populate('flat').populate('building');
+    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
+    const [complaints, total] = await Promise.all([
+      Complaint.find({ raisedBy: req.user._id, userRole: 'tenant' })
+        .populate('flat building').skip(skip).limit(limit),
+      Complaint.countDocuments({ raisedBy: req.user._id, userRole: 'tenant' })
+    ]);
 
     res.status(200).json(formatResponse({
       message: 'Complaints retrieved',
-      data: complaints
+      data: complaints,
+      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
     }));
   } catch (err) {
     next(err);
   }
 };
+
 
 // 6. View announcements
 exports.getRelevantAnnouncements = async (req, res, next) => {
@@ -146,9 +127,8 @@ exports.getRelevantAnnouncements = async (req, res, next) => {
         { audience: 'all' },
         { audience: 'tenants' },
         { building: null },
-        { building: flat.building }
-      ],
-      $or: [
+        { building: flat.building },
+      
         { validTill: null },
         { validTill: { $gte: new Date() } }
       ]
@@ -190,32 +170,19 @@ exports.getUnpaidMaintenance = async (req, res, next) => {
 };
 
 // 8. Pay maintenance
+const { payMaintenance } = require('../services/paymentService');
+
 exports.payMaintenance = async (req, res, next) => {
   try {
-    const maintenance = await Maintenance.findById(req.params.maintenanceId).populate('flat');
-    if (!maintenance || maintenance.flat.tenant.toString() !== req.user._id.toString()) {
-      return res.status(403).json(formatResponse({
-        success: false,
-        message: 'Unauthorized or not found',
-        statusCode: 403
-      }));
-    }
-
-    if (maintenance.isPaid) {
-      return res.status(400).json(formatResponse({
-        success: false,
-        message: 'Already paid',
-        statusCode: 400
-      }));
-    }
-
-    maintenance.isPaid = true;
-    maintenance.paidAt = new Date();
-    await maintenance.save();
+    const result = await payMaintenance({
+      maintenanceId: req.params.maintenanceId,
+      userId: req.user._id,
+      role: 'tenant'
+    });
 
     res.status(200).json(formatResponse({
       message: 'Maintenance paid successfully',
-      data: maintenance
+      data: result
     }));
   } catch (err) {
     next(err);
@@ -241,3 +208,68 @@ exports.getTenantDashboard = async (req, res, next) => {
     next(err);
   }
 };
+
+// 2.5. Get current month's rent (if exists)
+exports.getCurrentRent = async (req, res, next) => {
+  try {
+    const flat = await Flat.findOne({ tenant: req.user._id });
+    if (!flat) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'Flat not assigned',
+        statusCode: 404
+      }));
+    }
+
+    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+
+    const rent = await Rent.findOne({
+      flat: flat._id,
+      tenant: req.user._id,
+      billingMonth: currentMonth,
+    });
+
+    if (!rent) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'No rent record found for this month',
+        statusCode: 404
+      }));
+    }
+
+    res.status(200).json(formatResponse({
+      message: 'Current month rent retrieved',
+      data: rent
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+exports.updateMyProfile = async (req, res, next) => {
+  try {
+    const { name, phone, profilePic } = req.body;
+
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json(formatResponse({ success: false, message: 'User not found' }));
+
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (profilePic) user.profilePic = profilePic;
+
+    await user.save();
+
+    res.status(200).json(formatResponse({
+      message: 'Profile updated successfully',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profilePic: user.profilePic
+      }
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+

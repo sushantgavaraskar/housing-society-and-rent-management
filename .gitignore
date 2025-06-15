@@ -28,4 +28,6 @@ build/
 # Optional npm cache
 .npm/
 .cache/
-test.py
+
+tesh.py
+project_dump.txt

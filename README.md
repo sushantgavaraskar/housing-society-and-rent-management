@@ -2,7 +2,9 @@
 ```
 Housing Society Management
 ├─ config
-│  └─ db.js
+│  ├─ constant.js
+│  ├─ db.js
+│  └─ mailer.js
 ├─ controllers
 │  ├─ adminController.js
 │  ├─ announcementController.js
@@ -15,7 +17,8 @@ Housing Society Management
 │  ├─ authMiddleware.js
 │  ├─ errorHandler.js
 │  ├─ roleAccessGuard.js
-│  └─ roleMiddleware.js
+│  ├─ roleMiddleware.js
+│  └─ validate.js
 ├─ models
 │  ├─ Announcement.js
 │  ├─ Building.js
@@ -38,11 +41,23 @@ Housing Society Management
 │  ├─ ownershipRequestRoutes.js
 │  └─ tenantRoutes.js
 ├─ server.js
+├─ services
+│  ├─ authService.js
+│  ├─ complaintServices
+│  ├─ flatService.js
+│  ├─ ownershipService.js
+│  └─ paymentService.js
 ├─ uploads
-└─ utils
-   ├─ generateToken.js
-   ├─ invoiceGenerator.js
-   ├─ responseFormatter.js
-   └─ sendEmail.js
+├─ utils
+│  ├─ formatResponse.js
+│  ├─ generateToken.js
+│  ├─ logger.js
+│  ├─ pagination.js
+│  ├─ sendEmail.js
+│  └─ validateEnv.js
+└─ validators
+   ├─ authValidator.js
+   ├─ flatValidator.js
+   └─ societyValidator.js
 
 ```

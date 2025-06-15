@@ -1,17 +1,21 @@
+// routes/authRoutes.js
+
 const express = require('express');
 const router = express.Router();
+
 const authController = require('../controllers/authController');
+const { protect } = require('../middleware/authMiddleware');
 
-const authMiddleware = require('../middleware/authMiddleware');
-const {registerValidation, loginValidation} = require('../validations/userValidation')
-
-
-router.post('/register', registerValidation, authController.registerUser);
-router.post('/login', loginValidation, authController.loginUser);
+const validate = require('../middleware/validate');
+const { registerValidator, loginValidator } = require('../validators/authValidator');
+// Public Routes
+router.post('/register', registerValidator, validate, authController.registerUser);
+router.post('/login', loginValidator,validate, authController.loginUser);
+router.get('/token-status', authController.tokenStatus);
 
 // Protected Routes
-router.post('/logout', authMiddleware, authController.logoutUser);
-router.get('/me', authMiddleware, authController.getMe);
-router.put('/change-password', authMiddleware, authController.changePassword);
-router.get('/token-status', authMiddleware, authController.tokenStatus);
+router.post('/logout', protect, authController.logoutUser);
+router.get('/me', protect, authController.getMe);
+router.patch('/change-password', protect, authController.changePassword);
+
 module.exports = router;

@@ -4,7 +4,7 @@ const OwnershipRequest = require('../models/OwnershipRequest');
 const Rent = require('../models/Rent');
 const User = require('../models/User');
 const Maintenance = require('../models/Maintenance');
-const formatResponse = require('../utils/responseFormatter');
+const formatResponse = require('../utils/formatResponse');
 
 // 1. Get all flats owned by logged-in owner
 exports.getMyFlats = async (req, res, next) => {
@@ -98,28 +98,18 @@ exports.getRentHistory = async (req, res, next) => {
 };
 
 // 5. File complaint
+const { createComplaint } = require('../services/complaintService');
+
 exports.fileComplaint = async (req, res, next) => {
   try {
     const { flatId, category, subject, description } = req.body;
-
-    const flat = await Flat.findOne({ _id: flatId, owner: req.user._id });
-    if (!flat) {
-      return res.status(403).json(formatResponse({
-        success: false,
-        message: 'Unauthorized access to flat',
-        statusCode: 403
-      }));
-    }
-
-    const complaint = await Complaint.create({
+    const complaint = await createComplaint({
       raisedBy: req.user._id,
       userRole: 'owner',
-      flat: flatId,
-      building: flat.building,
-      society: flat.society,
+      flatId,
       category,
       subject,
-      description,
+      description
     });
 
     res.status(201).json(formatResponse({
@@ -131,16 +121,21 @@ exports.fileComplaint = async (req, res, next) => {
   }
 };
 
+
 // 6. View own complaints
 exports.getMyComplaints = async (req, res, next) => {
   try {
-    const complaints = await Complaint.find({ raisedBy: req.user._id, userRole: 'owner' })
-      .populate('flat')
-      .populate('building');
+    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
+    const [complaints, total] = await Promise.all([
+      Complaint.find({ raisedBy: req.user._id, userRole: 'owner' })
+        .populate('flat building').skip(skip).limit(limit),
+      Complaint.countDocuments({ raisedBy: req.user._id, userRole: 'owner' })
+    ]);
 
     res.status(200).json(formatResponse({
       message: 'Complaints retrieved',
-      data: complaints
+      data: complaints,
+      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
     }));
   } catch (err) {
     next(err);
@@ -194,44 +189,19 @@ exports.getUnpaidMaintenance = async (req, res, next) => {
 };
 
 // 9. Pay maintenance for owner flats
+const { payMaintenance } = require('../services/paymentService');
+
 exports.payMaintenance = async (req, res, next) => {
   try {
-    const maintenance = await Maintenance.findById(req.params.maintenanceId).populate('flat');
-
-    if (!maintenance) {
-      return res.status(404).json(formatResponse({
-        success: false,
-        message: 'Maintenance not found',
-        statusCode: 404
-      }));
-    }
-
-    const isOwnedByUser = maintenance.flat.owner.toString() === req.user._id.toString();
-    const isVacantOrOwnerOccupied = !maintenance.flat.tenant;
-
-    if (!isOwnedByUser || !isVacantOrOwnerOccupied) {
-      return res.status(403).json(formatResponse({
-        success: false,
-        message: 'Unauthorized: not owner-occupied or already rented',
-        statusCode: 403
-      }));
-    }
-
-    if (maintenance.isPaid) {
-      return res.status(400).json(formatResponse({
-        success: false,
-        message: 'Already paid',
-        statusCode: 400
-      }));
-    }
-
-    maintenance.isPaid = true;
-    maintenance.paidAt = new Date();
-    await maintenance.save();
+    const result = await payMaintenance({
+      maintenanceId: req.params.maintenanceId,
+      userId: req.user._id,
+      role: 'owner'
+    });
 
     res.status(200).json(formatResponse({
       message: 'Maintenance paid successfully',
-      data: maintenance
+      data: result
     }));
   } catch (err) {
     next(err);
@@ -239,40 +209,70 @@ exports.payMaintenance = async (req, res, next) => {
 };
 
 // 10. Assign tenant to flat
+const { assignTenant } = require('../services/flatService');
+
 exports.assignTenantToMyFlat = async (req, res, next) => {
   try {
     const { flatId, tenantId } = req.body;
-
-    const flat = await Flat.findOne({ _id: flatId, owner: req.user._id }).populate('society');
-    if (!flat) {
-      return res.status(403).json(formatResponse({
-        success: false,
-        message: 'Unauthorized or flat not found',
-        statusCode: 403
-      }));
-    }
-
-    const tenant = await User.findById(tenantId);
-    if (!tenant || tenant.role !== 'tenant') {
-      return res.status(400).json(formatResponse({
-        success: false,
-        message: 'Invalid tenant user',
-        statusCode: 400
-      }));
-    }
-
-    flat.tenant = tenant._id;
-    flat.isRented = true;
-    flat.occupancyStatus = 'occupied';
-    await flat.save();
-
-    if (!tenant.society) {
-      tenant.society = flat.society._id;
-      await tenant.save();
-    }
+    const flat = await assignTenant({ flatId, tenantId, ownerId: req.user._id });
 
     res.status(200).json(formatResponse({
       message: 'Tenant assigned successfully',
+      data: flat
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.removeTenantFromMyFlat = async (req, res, next) => {
+  try {
+    const flat = await Flat.findOne({
+      _id: req.params.flatId,
+      owner: req.user._id
+    });
+
+    if (!flat) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'Flat not found or unauthorized',
+        statusCode: 404
+      }));
+    }
+
+    flat.tenant = null;
+    flat.isRented = false;
+    flat.occupancyStatus = 'vacant';
+    await flat.save();
+
+    res.json(formatResponse({ message: 'Tenant removed successfully', data: flat }));
+  } catch (err) {
+    next(err);
+  }
+};
+exports.updateTenantForMyFlat = async (req, res, next) => {
+  try {
+    const { newTenantId } = req.body;
+    const flat = await Flat.findOne({
+      _id: req.params.flatId,
+      owner: req.user._id
+    });
+
+    if (!flat) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'Flat not found or unauthorized',
+        statusCode: 404
+      }));
+    }
+
+    flat.tenant = newTenantId;
+    flat.isRented = true;
+    flat.occupancyStatus = 'occupied-tenant';
+    await flat.save();
+
+    res.status(200).json(formatResponse({
+      message: 'Tenant updated successfully',
       data: flat
     }));
   } catch (err) {

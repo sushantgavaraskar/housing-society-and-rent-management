@@ -17,9 +17,10 @@ router.get('/my-flat', tenantController.getMyFlat);
 // 💰 Rent & Maintenance
 router.get('/rent-history', tenantController.getRentHistory);
 router.get('/current-rent', tenantController.getCurrentRent);
-router.post('/pay-rent/:rentId', tenantController.payRent);
+router.patch('/rent/:rentId/pay', tenantController.payRent);
 router.get('/maintenance-due', tenantController.getUnpaidMaintenance);
-router.post('/pay-maintenance/:maintenanceId', tenantController.payMaintenance);
+router.patch('/maintenance/:maintenanceId/pay', tenantController.payMaintenance);
+router.patch('/profile', tenantController.updateMyProfile);
 
 // 🛠 Complaints
 router.post('/complaints', tenantController.fileComplaint);

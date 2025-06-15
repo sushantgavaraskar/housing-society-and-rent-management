@@ -8,14 +8,59 @@ const Announcement = require('../models/Announcement');
 const Complaint = require('../models/Complaint');
 const Rent = require('../models/Rent');
 const sendEmail = require('../utils/sendEmail');
-const formatResponse = require('../utils/responseFormatter');
+const formatResponse = require('../utils/formatResponse');
 
 // === SOCIETIES ===
 
+
+exports.createSociety = async (req, res, next) => {
+  try {
+    const { name, registrationNumber, address, maintenancePolicy } = req.body;
+
+    const existing = await Society.findOne({ registrationNumber });
+    if (existing) {
+      return res.status(400).json(formatResponse({
+        success: false,
+        message: 'Society with this registration number already exists',
+        statusCode: 400
+      }));
+    }
+
+    const society = await Society.create({
+      name,
+      registrationNumber,
+      address,
+      maintenancePolicy,
+      admin: req.user._id
+    });
+
+    res.status(201).json(formatResponse({
+      message: 'Society created successfully',
+      data: society
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getMySocieties = async (req, res, next) => {
   try {
-    const societies = await Society.find({ admin: req.user._id });
-    res.json(formatResponse({ message: 'Societies retrieved', data: societies }));
+    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
+    const [societies, total] = await Promise.all([
+      Society.find({ admin: req.user._id }).skip(skip).limit(limit),
+      Society.countDocuments({ admin: req.user._id })
+    ]);
+
+    res.json(formatResponse({
+      message: 'Societies retrieved',
+      data: societies,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    }));
   } catch (err) {
     next(err);
   }
@@ -133,6 +178,7 @@ exports.generateMaintenance = async (req, res, next) => {
 exports.getMaintenanceStatus = async (req, res, next) => {
   try {
     const { filterBy, id } = req.query;
+    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
     let query = {};
 
     if (filterBy === 'society') query.society = id;
@@ -142,22 +188,37 @@ exports.getMaintenanceStatus = async (req, res, next) => {
       query.flat = { $in: flats.map(f => f._id) };
     }
 
-    const records = await Maintenance.find(query)
-      .populate('flat', 'flatNumber')
-      .populate('building', 'name');
+    const [records, total] = await Promise.all([
+      Maintenance.find(query).populate('flat building').skip(skip).limit(limit),
+      Maintenance.countDocuments(query)
+    ]);
 
-    res.json(formatResponse({ message: 'Maintenance records retrieved', data: records }));
+    res.json(formatResponse({
+      message: 'Maintenance records retrieved',
+      data: records,
+      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
+    }));
   } catch (err) {
     next(err);
   }
 };
 
+
 // === RENT ===
 
 exports.getRentHistory = async (req, res, next) => {
   try {
-    const rentRecords = await Rent.find().populate('flat', 'flatNumber').populate('tenant', 'name email');
-    res.json(formatResponse({ message: 'Rent history retrieved', data: rentRecords }));
+    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
+    const [rents, total] = await Promise.all([
+      Rent.find().populate('flat tenant').skip(skip).limit(limit),
+      Rent.countDocuments()
+    ]);
+
+    res.json(formatResponse({
+      message: 'Rent history retrieved',
+      data: rents,
+      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
+    }));
   } catch (err) {
     next(err);
   }
@@ -174,27 +235,27 @@ exports.getOwnershipRequests = async (req, res, next) => {
   }
 };
 
+const { reviewOwnershipRequest } = require('../services/ownershipService');
+
 exports.reviewOwnershipRequest = async (req, res, next) => {
   try {
     const { requestId, status, note } = req.body;
-    const request = await OwnershipRequest.findById(requestId);
-    if (!request) return res.status(404).json(formatResponse({ success: false, message: 'Request not found', statusCode: 404 }));
+    const result = await reviewOwnershipRequest({
+      requestId,
+      status,
+      note,
+      reviewerId: req.user._id
+    });
 
-    request.status = status;
-    request.reviewedBy = req.user._id;
-    request.reviewedOn = new Date();
-    request.adminNote = note;
-    await request.save();
-
-    if (status === 'approved') {
-      await Flat.findByIdAndUpdate(request.flat, { owner: request.currentOwner });
-    }
-
-    res.json(formatResponse({ message: 'Request reviewed', data: request }));
+    res.json(formatResponse({
+      message: 'Request reviewed',
+      data: result
+    }));
   } catch (err) {
     next(err);
   }
 };
+
 
 // === ANNOUNCEMENTS ===
 
@@ -220,32 +281,42 @@ exports.createAnnouncement = async (req, res, next) => {
 
 // === COMPLAINTS ===
 
+const { getAllComplaints } = require('../services/complaintService');
+
 exports.getComplaints = async (req, res, next) => {
   try {
-    const complaints = await Complaint.find({}).populate('raisedBy flat building society');
-    res.json(formatResponse({ message: 'All complaints retrieved', data: complaints }));
+    const complaints = await getAllComplaints();
+    res.json(formatResponse({
+      message: 'All complaints retrieved',
+      data: complaints
+    }));
   } catch (err) {
     next(err);
   }
 };
+
+
+const { updateComplaintStatus } = require('../services/complaintService');
 
 exports.updateComplaintStatus = async (req, res, next) => {
   try {
     const { complaintId, status, adminNote } = req.body;
-    const complaint = await Complaint.findById(complaintId);
-    if (!complaint) return res.status(404).json(formatResponse({ success: false, message: 'Complaint not found', statusCode: 404 }));
+    const complaint = await updateComplaintStatus({
+      complaintId,
+      status,
+      adminNote,
+      resolvedBy: req.user._id
+    });
 
-    complaint.status = status;
-    complaint.adminNote = adminNote || '';
-    complaint.resolvedBy = req.user._id;
-    complaint.resolvedOn = new Date();
-    await complaint.save();
-
-    res.json(formatResponse({ message: 'Complaint updated', data: complaint }));
+    res.json(formatResponse({
+      message: 'Complaint updated',
+      data: complaint
+    }));
   } catch (err) {
     next(err);
   }
 };
+
 
 // === DASHBOARD ===
 
@@ -265,15 +336,7 @@ exports.getAdminDashboard = async (req, res, next) => {
   }
 };
 
-// === AGREEMENTS ===
 
-exports.getAllAgreements = async (req, res, next) => {
-  try {
-    res.status(501).json(formatResponse({ message: 'Agreement system not implemented yet' }));
-  } catch (err) {
-    next(err);
-  }
-};
 
 // === NOTES & REMINDERS ===
 
@@ -303,3 +366,29 @@ exports.sendReminderToUser = async (req, res, next) => {
     next(err);
   }
 };
+// Get full flat info (owner, tenant, society, building)
+exports.getFlatInfo = async (req, res, next) => {
+  try {
+    const flat = await Flat.findById(req.params.flatId)
+      .populate('owner', 'name email phone')
+      .populate('tenant', 'name email phone')
+      .populate('building')
+      .populate('society');
+
+    if (!flat) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'Flat not found',
+        statusCode: 404
+      }));
+    }
+
+    res.json(formatResponse({
+      message: 'Flat details retrieved',
+      data: flat
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+

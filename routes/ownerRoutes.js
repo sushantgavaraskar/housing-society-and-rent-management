@@ -17,12 +17,14 @@ router.get('/flats/:id/society', ownerController.getFlatSocietyInfo);
 
 // 📨 Ownership Requests
 router.post('/ownership-request', ownerController.submitOwnershipRequest);
-router.post('/assign-tenant', ownerController.assignTenantToMyFlat);
+router.patch('/flats/:id/assign-tenant', ownerController.assignTenantToMyFlat);
 
 // 💰 Rent & Maintenance
 router.get('/rent-history', ownerController.getRentHistory);
 router.get('/maintenance-due', ownerController.getUnpaidMaintenance);
-router.post('/pay-maintenance/:maintenanceId', ownerController.payMaintenance);
+router.patch('/maintenance/:maintenanceId/pay', ownerController.payMaintenance);
+router.patch('/flats/:flatId/remove-tenant', ownerController.removeTenantFromMyFlat);
+router.patch('/flats/:flatId/update-tenant', ownerController.updateTenantForMyFlat);
 
 // 🛠 Complaints
 router.post('/complaints', ownerController.fileComplaint);
