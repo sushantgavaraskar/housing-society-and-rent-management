@@ -76,9 +76,8 @@ build/
 # Optional npm cache
 .npm/
 .cache/
+test.py
 
-tesh.py
-project_dump.txt
 │   # --- End: .gitignore ---
 
 │   ├─ package.json
@@ -125,74 +124,6 @@ project_dump.txt
 
 │   # --- End: project_dump.txt ---
 
-│   ├─ README.md
-
-│   # --- Begin: README.md ---
-
-```
-Housing Society Management
-├─ config
-│  ├─ constant.js
-│  ├─ db.js
-│  └─ mailer.js
-├─ controllers
-│  ├─ adminController.js
-│  ├─ announcementController.js
-│  ├─ authController.js
-│  ├─ complaintController.js
-│  ├─ ownerController.js
-│  ├─ ownershipRequestController.js
-│  └─ tenantController.js
-├─ middleware
-│  ├─ authMiddleware.js
-│  ├─ errorHandler.js
-│  ├─ roleAccessGuard.js
-│  ├─ roleMiddleware.js
-│  └─ validate.js
-├─ models
-│  ├─ Announcement.js
-│  ├─ Building.js
-│  ├─ Complaint.js
-│  ├─ Flat.js
-│  ├─ Maintenance.js
-│  ├─ OwnershipRequest.js
-│  ├─ Rent.js
-│  ├─ Society.js
-│  └─ User.js
-├─ package-lock.json
-├─ package.json
-├─ README.md
-├─ routes
-│  ├─ adminRoutes.js
-│  ├─ announcementRoutes.js
-│  ├─ authRoutes.js
-│  ├─ complaintRoutes.js
-│  ├─ ownerRoutes.js
-│  ├─ ownershipRequestRoutes.js
-│  └─ tenantRoutes.js
-├─ server.js
-├─ services
-│  ├─ authService.js
-│  ├─ complaintServices
-│  ├─ flatService.js
-│  ├─ ownershipService.js
-│  └─ paymentService.js
-├─ uploads
-├─ utils
-│  ├─ formatResponse.js
-│  ├─ generateToken.js
-│  ├─ logger.js
-│  ├─ pagination.js
-│  ├─ sendEmail.js
-│  └─ validateEnv.js
-└─ validators
-   ├─ authValidator.js
-   ├─ flatValidator.js
-   └─ societyValidator.js
-
-```
-│   # --- End: README.md ---
-
 │   ├─ server.js
 
 │   # --- Begin: server.js ---
@@ -201,14 +132,13 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-
+const mongoose = require('mongoose');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 // const mongoSanitize = require('express-mongo-sanitize');
 // const xss = require('xss-clean');
 const compression = require('compression');
-const validateEnv = require('./utils/validateEnv');
-const logger = require('./utils/logger');
+
 const connectDB = require('./config/db');
 const { errorHandler } = require('./middleware/errorHandler');
 
@@ -222,7 +152,6 @@ const announcementRoutes = require('./routes/announcementRoutes');
 const ownershipRequestRoutes = require('./routes/ownershipRequestRoutes');
 
 dotenv.config();
-validateEnv(); // Validate environment variables
 connectDB();
 
 const app = express();
@@ -232,7 +161,6 @@ app.use(helmet());
 // app.use(xss());
 // app.use(mongoSanitize());
 app.use(compression());
-app.use(logger); // ✅ Added logger middleware
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -267,13 +195,13 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });
 │   # --- End: server.js ---
 
-│   ├─ tesh.py
+│   ├─ test.py
 
-│   # --- Begin: tesh.py ---
+│   # --- Begin: test.py ---
 import os
 
 def dump_project_to_txt(root_dir, output_file):
@@ -289,7 +217,7 @@ def dump_project_to_txt(root_dir, output_file):
 
     # Specific filenames to ignore (e.g., lockfiles or OS files)
     skip_files = {
-        "package-lock.json", "yarn.lock", ".DS_Store"
+        "package-lock.json", "yarn.lock", ".DS_Store", "README.md"
     }
 
     with open(output_file, "w", encoding="utf-8") as f:
@@ -321,22 +249,9 @@ def dump_project_to_txt(root_dir, output_file):
 # Example usage
 dump_project_to_txt(".", "project_dump.txt")
 
-│   # --- End: tesh.py ---
+│   # --- End: test.py ---
 
 │   ├─ config/
-│   │   ├─ constant.js
-
-│   │   # --- Begin: constant.js ---
-// config/constants.js
-module.exports = {
-    ROLES: ['admin', 'owner', 'tenant'],
-    COMPLAINT_CATEGORIES: ['plumbing', 'electrical', 'security', 'cleanliness', 'other'],
-    MAINTENANCE_FREQUENCIES: ['monthly', 'quarterly'],
-    PAYMENT_MODES: ['cash', 'online', 'bank-transfer', 'upi'],
-  };
-  
-│   │   # --- End: constant.js ---
-
 │   │   ├─ db.js
 
 │   │   # --- Begin: db.js ---
@@ -363,24 +278,6 @@ module.exports = connectDB;
 
 │   │   # --- End: db.js ---
 
-│   │   ├─ mailer.js
-
-│   │   # --- Begin: mailer.js ---
-// config/mailer.js
-const nodemailer = require('nodemailer');
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
-
-module.exports = transporter;
-
-│   │   # --- End: mailer.js ---
-
 │   ├─ controllers/
 │   │   ├─ adminController.js
 
@@ -395,59 +292,14 @@ const Announcement = require('../models/Announcement');
 const Complaint = require('../models/Complaint');
 const Rent = require('../models/Rent');
 const sendEmail = require('../utils/sendEmail');
-const formatResponse = require('../utils/formatResponse');
-const Society = require('../models/Society');
+const formatResponse = require('../utils/responseFormatter');
+
 // === SOCIETIES ===
-const Society = require('../models/Society');
-
-exports.createSociety = async (req, res, next) => {
-  try {
-    const { name, registrationNumber, address, maintenancePolicy } = req.body;
-
-    const existing = await Society.findOne({ registrationNumber });
-    if (existing) {
-      return res.status(400).json(formatResponse({
-        success: false,
-        message: 'Society with this registration number already exists',
-        statusCode: 400
-      }));
-    }
-
-    const society = await Society.create({
-      name,
-      registrationNumber,
-      address,
-      maintenancePolicy,
-      admin: req.user._id
-    });
-
-    res.status(201).json(formatResponse({
-      message: 'Society created successfully',
-      data: society
-    }));
-  } catch (err) {
-    next(err);
-  }
-};
 
 exports.getMySocieties = async (req, res, next) => {
   try {
-    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
-    const [societies, total] = await Promise.all([
-      Society.find({ admin: req.user._id }).skip(skip).limit(limit),
-      Society.countDocuments({ admin: req.user._id })
-    ]);
-
-    res.json(formatResponse({
-      message: 'Societies retrieved',
-      data: societies,
-      pagination: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit)
-      }
-    }));
+    const societies = await Society.find({ admin: req.user._id });
+    res.json(formatResponse({ message: 'Societies retrieved', data: societies }));
   } catch (err) {
     next(err);
   }
@@ -565,7 +417,6 @@ exports.generateMaintenance = async (req, res, next) => {
 exports.getMaintenanceStatus = async (req, res, next) => {
   try {
     const { filterBy, id } = req.query;
-    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
     let query = {};
 
     if (filterBy === 'society') query.society = id;
@@ -575,37 +426,22 @@ exports.getMaintenanceStatus = async (req, res, next) => {
       query.flat = { $in: flats.map(f => f._id) };
     }
 
-    const [records, total] = await Promise.all([
-      Maintenance.find(query).populate('flat building').skip(skip).limit(limit),
-      Maintenance.countDocuments(query)
-    ]);
+    const records = await Maintenance.find(query)
+      .populate('flat', 'flatNumber')
+      .populate('building', 'name');
 
-    res.json(formatResponse({
-      message: 'Maintenance records retrieved',
-      data: records,
-      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
-    }));
+    res.json(formatResponse({ message: 'Maintenance records retrieved', data: records }));
   } catch (err) {
     next(err);
   }
 };
 
-
 // === RENT ===
 
 exports.getRentHistory = async (req, res, next) => {
   try {
-    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
-    const [rents, total] = await Promise.all([
-      Rent.find().populate('flat tenant').skip(skip).limit(limit),
-      Rent.countDocuments()
-    ]);
-
-    res.json(formatResponse({
-      message: 'Rent history retrieved',
-      data: rents,
-      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
-    }));
+    const rentRecords = await Rent.find().populate('flat', 'flatNumber').populate('tenant', 'name email');
+    res.json(formatResponse({ message: 'Rent history retrieved', data: rentRecords }));
   } catch (err) {
     next(err);
   }
@@ -622,27 +458,27 @@ exports.getOwnershipRequests = async (req, res, next) => {
   }
 };
 
-const { reviewOwnershipRequest } = require('../services/ownershipService');
-
 exports.reviewOwnershipRequest = async (req, res, next) => {
   try {
     const { requestId, status, note } = req.body;
-    const result = await reviewOwnershipRequest({
-      requestId,
-      status,
-      note,
-      reviewerId: req.user._id
-    });
+    const request = await OwnershipRequest.findById(requestId);
+    if (!request) return res.status(404).json(formatResponse({ success: false, message: 'Request not found', statusCode: 404 }));
 
-    res.json(formatResponse({
-      message: 'Request reviewed',
-      data: result
-    }));
+    request.status = status;
+    request.reviewedBy = req.user._id;
+    request.reviewedOn = new Date();
+    request.adminNote = note;
+    await request.save();
+
+    if (status === 'approved') {
+      await Flat.findByIdAndUpdate(request.flat, { owner: request.currentOwner });
+    }
+
+    res.json(formatResponse({ message: 'Request reviewed', data: request }));
   } catch (err) {
     next(err);
   }
 };
-
 
 // === ANNOUNCEMENTS ===
 
@@ -668,42 +504,32 @@ exports.createAnnouncement = async (req, res, next) => {
 
 // === COMPLAINTS ===
 
-const { getAllComplaints } = require('../services/complaintService');
-
 exports.getComplaints = async (req, res, next) => {
   try {
-    const complaints = await getAllComplaints();
-    res.json(formatResponse({
-      message: 'All complaints retrieved',
-      data: complaints
-    }));
+    const complaints = await Complaint.find({}).populate('raisedBy flat building society');
+    res.json(formatResponse({ message: 'All complaints retrieved', data: complaints }));
   } catch (err) {
     next(err);
   }
 };
-
-
-const { updateComplaintStatus } = require('../services/complaintService');
 
 exports.updateComplaintStatus = async (req, res, next) => {
   try {
     const { complaintId, status, adminNote } = req.body;
-    const complaint = await updateComplaintStatus({
-      complaintId,
-      status,
-      adminNote,
-      resolvedBy: req.user._id
-    });
+    const complaint = await Complaint.findById(complaintId);
+    if (!complaint) return res.status(404).json(formatResponse({ success: false, message: 'Complaint not found', statusCode: 404 }));
 
-    res.json(formatResponse({
-      message: 'Complaint updated',
-      data: complaint
-    }));
+    complaint.status = status;
+    complaint.adminNote = adminNote || '';
+    complaint.resolvedBy = req.user._id;
+    complaint.resolvedOn = new Date();
+    await complaint.save();
+
+    res.json(formatResponse({ message: 'Complaint updated', data: complaint }));
   } catch (err) {
     next(err);
   }
 };
-
 
 // === DASHBOARD ===
 
@@ -723,7 +549,15 @@ exports.getAdminDashboard = async (req, res, next) => {
   }
 };
 
+// === AGREEMENTS ===
 
+exports.getAllAgreements = async (req, res, next) => {
+  try {
+    res.status(501).json(formatResponse({ message: 'Agreement system not implemented yet' }));
+  } catch (err) {
+    next(err);
+  }
+};
 
 // === NOTES & REMINDERS ===
 
@@ -753,32 +587,6 @@ exports.sendReminderToUser = async (req, res, next) => {
     next(err);
   }
 };
-// Get full flat info (owner, tenant, society, building)
-exports.getFlatInfo = async (req, res, next) => {
-  try {
-    const flat = await Flat.findById(req.params.flatId)
-      .populate('owner', 'name email phone')
-      .populate('tenant', 'name email phone')
-      .populate('building')
-      .populate('society');
-
-    if (!flat) {
-      return res.status(404).json(formatResponse({
-        success: false,
-        message: 'Flat not found',
-        statusCode: 404
-      }));
-    }
-
-    res.json(formatResponse({
-      message: 'Flat details retrieved',
-      data: flat
-    }));
-  } catch (err) {
-    next(err);
-  }
-};
-
 
 │   │   # --- End: adminController.js ---
 
@@ -787,7 +595,7 @@ exports.getFlatInfo = async (req, res, next) => {
 │   │   # --- Begin: announcementController.js ---
 const Announcement = require('../models/Announcement');
 const Flat = require('../models/Flat');
-const formatResponse = require('../utils/formatResponse');
+const formatResponse = require('../utils/responseFormatter');
 
 // Create a new announcement
 exports.createAnnouncement = async (req, res, next) => {
@@ -857,16 +665,14 @@ exports.getMyAnnouncements = async (req, res, next) => {
 // Get all announcements (admin use)
 exports.getAllAnnouncements = async (req, res, next) => {
   try {
-    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
-    const [announcements, total] = await Promise.all([
-      Announcement.find().populate('createdBy society building').skip(skip).limit(limit),
-      Announcement.countDocuments()
-    ]);
+    const announcements = await Announcement.find()
+      .populate('createdBy', 'name email role')
+      .populate('society', 'name')
+      .populate('building', 'name');
 
     res.status(200).json(formatResponse({
       message: 'All announcements retrieved',
-      data: announcements,
-      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
+      data: announcements
     }));
   } catch (err) {
     next(err);
@@ -879,23 +685,30 @@ exports.getAllAnnouncements = async (req, res, next) => {
 
 │   │   # --- Begin: authController.js ---
 // controllers/authController.js
-const {
-  loginUser,
-  registerUser,
-  generateTokenCookie,
-  changePassword,
-  validateToken
-} = require('../services/authService');
-const formatResponse = require('../utils/responseFormatter');
-const { asyncHandler } = require('../middleware/errorHandler');
+
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Flat = require('../models/Flat');
+const generateToken = require('../utils/generateToken');
+const { asyncHandler } = require('../middleware/errorHandler');
+const formatResponse = require('../utils/responseFormatter');
 
-// REGISTER
+// REGISTER USER
 exports.registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, phone, role } = req.body;
-  const user = await registerUser({ name, email, password, phone, role });
+  const { name, email, password, phone, role = 'tenant' } = req.body;
 
-  generateTokenCookie(res, user._id);
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return res.status(400).json(formatResponse({
+      success: false,
+      message: 'Email is already registered',
+      statusCode: 400
+    }));
+  }
+
+  const user = await User.create({ name, email, password, phone, role });
+
+  generateToken(res, user._id);
 
   res.status(201).json(formatResponse({
     message: 'User registered successfully',
@@ -912,9 +725,39 @@ exports.registerUser = asyncHandler(async (req, res) => {
 // LOGIN
 exports.loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
-  const user = await loginUser({ email, password });
 
-  generateTokenCookie(res, user._id);
+  const user = await User.findOne({ email }).select('+password');
+  if (!user || !(await user.comparePassword(password))) {
+    return res.status(401).json(formatResponse({
+      success: false,
+      message: 'Invalid email or password',
+      statusCode: 401
+    }));
+  }
+
+  if (user.role === 'owner') {
+    const flat = await Flat.findOne({ owner: user._id });
+    if (!flat) {
+      return res.status(403).json(formatResponse({
+        success: false,
+        message: 'Owner is not assigned to any flat yet',
+        statusCode: 403
+      }));
+    }
+  }
+
+  if (user.role === 'tenant') {
+    const flat = await Flat.findOne({ tenant: user._id });
+    if (!flat) {
+      return res.status(403).json(formatResponse({
+        success: false,
+        message: 'Tenant is not assigned to any flat yet',
+        statusCode: 403
+      }));
+    }
+  }
+
+  generateToken(res, user._id);
 
   res.status(200).json(formatResponse({
     message: 'Login successful',
@@ -932,7 +775,7 @@ exports.loginUser = asyncHandler(async (req, res) => {
 exports.logoutUser = asyncHandler(async (req, res) => {
   res.cookie('token', '', {
     httpOnly: true,
-    expires: new Date(0)
+    expires: new Date(0),
   });
 
   res.status(200).json(formatResponse({
@@ -966,11 +809,18 @@ exports.getMe = asyncHandler(async (req, res) => {
 // CHANGE PASSWORD
 exports.changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-  await changePassword({
-    userId: req.user._id,
-    currentPassword,
-    newPassword
-  });
+  const user = await User.findById(req.user._id).select('+password');
+
+  if (!user || !(await user.comparePassword(currentPassword))) {
+    return res.status(401).json(formatResponse({
+      success: false,
+      message: 'Current password is incorrect',
+      statusCode: 401
+    }));
+  }
+
+  user.password = newPassword;
+  await user.save();
 
   res.status(200).json(formatResponse({
     message: 'Password updated successfully'
@@ -993,7 +843,7 @@ exports.tokenStatus = asyncHandler(async (req, res) => {
   }
 
   try {
-    const decoded = validateToken(token);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     return res.status(200).json(formatResponse({
       message: 'Token is valid',
       data: { userId: decoded.id }
@@ -1012,87 +862,134 @@ exports.tokenStatus = asyncHandler(async (req, res) => {
 │   │   ├─ complaintController.js
 
 │   │   # --- Begin: complaintController.js ---
-// controllers/complaintController.js
-
-const {
-  createComplaint,
-  getComplaintsByUser,
-  getAllComplaints,
-  updateComplaintStatus
-} = require('../services/complaintService');
-const formatResponse = require('../utils/responseFormatter');
-const { asyncHandler } = require('../middleware/errorHandler');
-
-// For tenant or owner complaint creation
-exports.createComplaint = asyncHandler(async (req, res) => {
-  const { flatId, category, subject, description } = req.body;
-  const complaint = await createComplaint({
-    raisedBy: req.user._id,
-    userRole: req.user.role,
-    flatId,
-    category,
-    subject,
-    description
-  });
-
-  res.status(201).json(formatResponse({
-    message: 'Complaint created successfully',
-    data: complaint
-  }));
-});
-
-// For fetching user’s own complaints
-exports.getMyComplaints = asyncHandler(async (req, res) => {
-  const complaints = await getComplaintsByUser(req.user._id, req.user.role);
-  res.json(formatResponse({
-    message: 'Your complaints',
-    data: complaints
-  }));
-});
-
-// controllers/complaintController.js
-const { getAllComplaints } = require('../services/complaintService');
+const Complaint = require('../models/Complaint');
+const Flat = require('../models/Flat');
 const formatResponse = require('../utils/responseFormatter');
 
+// Get all complaints (for admin)
 exports.getAllComplaints = async (req, res, next) => {
   try {
-    const { page, limit, status, category } = req.query;
+    const complaints = await Complaint.find()
+      .populate('raisedBy', 'name email role')
+      .populate('flat')
+      .populate('building')
+      .populate('society');
 
-    const { complaints, total } = await getAllComplaints({ page, limit, status, category });
-
-    res.json(formatResponse({
-      message: 'Complaints retrieved',
-      data: complaints,
-      pagination: {
-        total,
-        page: parseInt(page) || 1,
-        limit: parseInt(limit) || 10,
-        pages: Math.ceil(total / (limit || 10))
-      }
+    res.status(200).json(formatResponse({
+      message: 'All complaints retrieved',
+      data: complaints
     }));
   } catch (err) {
     next(err);
   }
 };
 
+// Get single complaint by ID
+exports.getComplaintById = async (req, res, next) => {
+  try {
+    const complaint = await Complaint.findById(req.params.id)
+      .populate('raisedBy', 'name email role')
+      .populate('flat')
+      .populate('building')
+      .populate('society');
 
+    if (!complaint) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'Complaint not found',
+        statusCode: 404
+      }));
+    }
 
-// Admin: update complaint status
-exports.updateComplaintStatus = asyncHandler(async (req, res) => {
-  const { complaintId, status, adminNote } = req.body;
+    res.status(200).json(formatResponse({
+      message: 'Complaint retrieved',
+      data: complaint
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
 
-  const complaint = await updateComplaintStatus({
-    complaintId,
-    status,
-    adminNote,
-    resolvedBy: req.user._id
-  });
+// Update complaint status (Admin)
+exports.updateComplaint = async (req, res, next) => {
+  try {
+    const { status, adminNote } = req.body;
 
-  res.json(formatResponse({
-    message: 'Complaint updated',
-    data: complaint
-  }));
-});
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'Complaint not found',
+        statusCode: 404
+      }));
+    }
+
+    complaint.status = status || complaint.status;
+    complaint.adminNote = adminNote || complaint.adminNote;
+    complaint.resolvedBy = req.user._id;
+    complaint.resolvedOn = new Date();
+
+    await complaint.save();
+
+    res.status(200).json(formatResponse({
+      message: 'Complaint updated successfully',
+      data: complaint
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Get complaints by current user (if needed here too)
+exports.getMyComplaints = async (req, res, next) => {
+  try {
+    const complaints = await Complaint.find({ raisedBy: req.user._id })
+      .populate('flat')
+      .populate('building')
+      .populate('society');
+
+    res.status(200).json(formatResponse({
+      message: 'My complaints retrieved',
+      data: complaints
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// File a new complaint
+exports.createComplaint = async (req, res, next) => {
+  try {
+    const { flatId, category, subject, description } = req.body;
+
+    const flat = await Flat.findById(flatId).populate('building').populate('society');
+    if (!flat) {
+      return res.status(400).json(formatResponse({
+        success: false,
+        message: 'Flat not found',
+        statusCode: 400
+      }));
+    }
+
+    const complaint = await Complaint.create({
+      raisedBy: req.user._id,
+      userRole: req.user.role,
+      flat: flat._id,
+      building: flat.building._id,
+      society: flat.society._id,
+      category,
+      subject,
+      description
+    });
+
+    res.status(201).json(formatResponse({
+      message: 'Complaint created',
+      data: complaint
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
 
 │   │   # --- End: complaintController.js ---
 
@@ -1105,7 +1002,7 @@ const OwnershipRequest = require('../models/OwnershipRequest');
 const Rent = require('../models/Rent');
 const User = require('../models/User');
 const Maintenance = require('../models/Maintenance');
-const formatResponse = require('../utils/formatResponse');
+const formatResponse = require('../utils/responseFormatter');
 
 // 1. Get all flats owned by logged-in owner
 exports.getMyFlats = async (req, res, next) => {
@@ -1199,18 +1096,28 @@ exports.getRentHistory = async (req, res, next) => {
 };
 
 // 5. File complaint
-const { createComplaint } = require('../services/complaintService');
-
 exports.fileComplaint = async (req, res, next) => {
   try {
     const { flatId, category, subject, description } = req.body;
-    const complaint = await createComplaint({
+
+    const flat = await Flat.findOne({ _id: flatId, owner: req.user._id });
+    if (!flat) {
+      return res.status(403).json(formatResponse({
+        success: false,
+        message: 'Unauthorized access to flat',
+        statusCode: 403
+      }));
+    }
+
+    const complaint = await Complaint.create({
       raisedBy: req.user._id,
       userRole: 'owner',
-      flatId,
+      flat: flatId,
+      building: flat.building,
+      society: flat.society,
       category,
       subject,
-      description
+      description,
     });
 
     res.status(201).json(formatResponse({
@@ -1222,21 +1129,16 @@ exports.fileComplaint = async (req, res, next) => {
   }
 };
 
-
 // 6. View own complaints
 exports.getMyComplaints = async (req, res, next) => {
   try {
-    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
-    const [complaints, total] = await Promise.all([
-      Complaint.find({ raisedBy: req.user._id, userRole: 'owner' })
-        .populate('flat building').skip(skip).limit(limit),
-      Complaint.countDocuments({ raisedBy: req.user._id, userRole: 'owner' })
-    ]);
+    const complaints = await Complaint.find({ raisedBy: req.user._id, userRole: 'owner' })
+      .populate('flat')
+      .populate('building');
 
     res.status(200).json(formatResponse({
       message: 'Complaints retrieved',
-      data: complaints,
-      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
+      data: complaints
     }));
   } catch (err) {
     next(err);
@@ -1290,19 +1192,44 @@ exports.getUnpaidMaintenance = async (req, res, next) => {
 };
 
 // 9. Pay maintenance for owner flats
-const { payMaintenance } = require('../services/paymentService');
-
 exports.payMaintenance = async (req, res, next) => {
   try {
-    const result = await payMaintenance({
-      maintenanceId: req.params.maintenanceId,
-      userId: req.user._id,
-      role: 'owner'
-    });
+    const maintenance = await Maintenance.findById(req.params.maintenanceId).populate('flat');
+
+    if (!maintenance) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'Maintenance not found',
+        statusCode: 404
+      }));
+    }
+
+    const isOwnedByUser = maintenance.flat.owner.toString() === req.user._id.toString();
+    const isVacantOrOwnerOccupied = !maintenance.flat.tenant;
+
+    if (!isOwnedByUser || !isVacantOrOwnerOccupied) {
+      return res.status(403).json(formatResponse({
+        success: false,
+        message: 'Unauthorized: not owner-occupied or already rented',
+        statusCode: 403
+      }));
+    }
+
+    if (maintenance.isPaid) {
+      return res.status(400).json(formatResponse({
+        success: false,
+        message: 'Already paid',
+        statusCode: 400
+      }));
+    }
+
+    maintenance.isPaid = true;
+    maintenance.paidAt = new Date();
+    await maintenance.save();
 
     res.status(200).json(formatResponse({
       message: 'Maintenance paid successfully',
-      data: result
+      data: maintenance
     }));
   } catch (err) {
     next(err);
@@ -1310,70 +1237,40 @@ exports.payMaintenance = async (req, res, next) => {
 };
 
 // 10. Assign tenant to flat
-const { assignTenant } = require('../services/flatService');
-
 exports.assignTenantToMyFlat = async (req, res, next) => {
   try {
     const { flatId, tenantId } = req.body;
-    const flat = await assignTenant({ flatId, tenantId, ownerId: req.user._id });
+
+    const flat = await Flat.findOne({ _id: flatId, owner: req.user._id }).populate('society');
+    if (!flat) {
+      return res.status(403).json(formatResponse({
+        success: false,
+        message: 'Unauthorized or flat not found',
+        statusCode: 403
+      }));
+    }
+
+    const tenant = await User.findById(tenantId);
+    if (!tenant || tenant.role !== 'tenant') {
+      return res.status(400).json(formatResponse({
+        success: false,
+        message: 'Invalid tenant user',
+        statusCode: 400
+      }));
+    }
+
+    flat.tenant = tenant._id;
+    flat.isRented = true;
+    flat.occupancyStatus = 'occupied';
+    await flat.save();
+
+    if (!tenant.society) {
+      tenant.society = flat.society._id;
+      await tenant.save();
+    }
 
     res.status(200).json(formatResponse({
       message: 'Tenant assigned successfully',
-      data: flat
-    }));
-  } catch (err) {
-    next(err);
-  }
-};
-
-exports.removeTenantFromMyFlat = async (req, res, next) => {
-  try {
-    const flat = await Flat.findOne({
-      _id: req.params.flatId,
-      owner: req.user._id
-    });
-
-    if (!flat) {
-      return res.status(404).json(formatResponse({
-        success: false,
-        message: 'Flat not found or unauthorized',
-        statusCode: 404
-      }));
-    }
-
-    flat.tenant = null;
-    flat.isRented = false;
-    flat.occupancyStatus = 'vacant';
-    await flat.save();
-
-    res.json(formatResponse({ message: 'Tenant removed successfully', data: flat }));
-  } catch (err) {
-    next(err);
-  }
-};
-exports.updateTenantForMyFlat = async (req, res, next) => {
-  try {
-    const { newTenantId } = req.body;
-    const flat = await Flat.findOne({
-      _id: req.params.flatId,
-      owner: req.user._id
-    });
-
-    if (!flat) {
-      return res.status(404).json(formatResponse({
-        success: false,
-        message: 'Flat not found or unauthorized',
-        statusCode: 404
-      }));
-    }
-
-    flat.tenant = newTenantId;
-    flat.isRented = true;
-    flat.occupancyStatus = 'occupied-tenant';
-    await flat.save();
-
-    res.status(200).json(formatResponse({
-      message: 'Tenant updated successfully',
       data: flat
     }));
   } catch (err) {
@@ -1386,58 +1283,107 @@ exports.updateTenantForMyFlat = async (req, res, next) => {
 │   │   ├─ ownershipRequestController.js
 
 │   │   # --- Begin: ownershipRequestController.js ---
-// controllers/ownershipRequestController.js
-
-const { reviewOwnershipRequest } = require('../services/ownershipService');
 const OwnershipRequest = require('../models/OwnershipRequest');
+const Flat = require('../models/Flat');
 const formatResponse = require('../utils/responseFormatter');
-const { asyncHandler } = require('../middleware/errorHandler');
 
-// Admin: list all ownership requests
-exports.getOwnershipRequests = async (req, res, next) => {
-  const { page = 1, limit = 10, status } = req.query;
+// Submit ownership request
+exports.submitOwnershipRequest = async (req, res, next) => {
+  try {
+    const { flatId, newOwnerName, newOwnerEmail, newOwnerPhone, reason } = req.body;
 
-  const query = {};
-  if (status) query.status = status;
-
-  const skip = (page - 1) * limit;
-
-  const requests = await OwnershipRequest.find(query)
-    .populate('currentOwner flat')
-    .skip(skip)
-    .limit(parseInt(limit));
-
-  const total = await OwnershipRequest.countDocuments(query);
-
-  res.json(formatResponse({
-    message: 'Ownership requests retrieved',
-    data: requests,
-    pagination: {
-      total,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      pages: Math.ceil(total / limit)
+    const flat = await Flat.findById(flatId);
+    if (!flat || flat.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json(formatResponse({
+        success: false,
+        message: 'Unauthorized request',
+        statusCode: 403
+      }));
     }
-  }));
+
+    const request = await OwnershipRequest.create({
+      flat: flatId,
+      currentOwner: req.user._id,
+      newOwnerName,
+      newOwnerEmail,
+      newOwnerPhone,
+      reason,
+    });
+
+    res.status(201).json(formatResponse({
+      message: 'Ownership request submitted',
+      data: request
+    }));
+  } catch (err) {
+    next(err);
+  }
 };
 
+// Get ownership requests submitted by owner
+exports.getMyOwnershipRequests = async (req, res, next) => {
+  try {
+    const requests = await OwnershipRequest.find({ currentOwner: req.user._id })
+      .populate('flat');
 
-// Admin: review/approve/reject ownership request
-exports.reviewOwnershipRequest = asyncHandler(async (req, res) => {
-  const { requestId, status, note } = req.body;
+    res.status(200).json(formatResponse({
+      message: 'Your ownership requests retrieved',
+      data: requests
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
 
-  const updatedRequest = await reviewOwnershipRequest({
-    requestId,
-    status,
-    note,
-    reviewerId: req.user._id
-  });
+// Get all ownership requests (admin use)
+exports.getAllOwnershipRequests = async (req, res, next) => {
+  try {
+    const requests = await OwnershipRequest.find()
+      .populate('flat')
+      .populate('currentOwner', 'name email');
 
-  res.json(formatResponse({
-    message: `Ownership request ${status}`,
-    data: updatedRequest
-  }));
-});
+    res.status(200).json(formatResponse({
+      message: 'All ownership requests retrieved',
+      data: requests
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Review ownership request (admin)
+exports.reviewOwnershipRequest = async (req, res, next) => {
+  try {
+    const { requestId, status, note } = req.body;
+
+    const request = await OwnershipRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'Request not found',
+        statusCode: 404
+      }));
+    }
+
+    request.status = status;
+    request.adminNote = note;
+    request.reviewedBy = req.user._id;
+    request.reviewedOn = new Date();
+    await request.save();
+
+    if (status === 'approved') {
+      await Flat.findByIdAndUpdate(request.flat, {
+        owner: request.currentOwner
+      });
+    }
+
+    res.status(200).json(formatResponse({
+      message: `Ownership request ${status}`,
+      data: request
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
 
 │   │   # --- End: ownershipRequestController.js ---
 
@@ -1449,7 +1395,7 @@ const Complaint = require('../models/Complaint');
 const Maintenance = require('../models/Maintenance');
 const Rent = require('../models/Rent');
 const Announcement = require('../models/Announcement');
-const formatResponse = require('../utils/formatResponse');
+const formatResponse = require('../utils/responseFormatter');
 
 // 1. Get assigned flat
 exports.getMyFlat = async (req, res, next) => {
@@ -1491,38 +1437,61 @@ exports.getRentHistory = async (req, res, next) => {
 };
 
 // 3. Pay rent
-const { payRent } = require('../services/paymentService');
-
 exports.payRent = async (req, res, next) => {
   try {
-    const result = await payRent({
-      rentId: req.params.rentId,
-      userId: req.user._id
-    });
+    const rent = await Rent.findById(req.params.rentId).populate('tenant');
+    if (!rent || rent.tenant._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json(formatResponse({
+        success: false,
+        message: 'Unauthorized rent payment attempt',
+        statusCode: 403
+      }));
+    }
+
+    if (rent.isPaid) {
+      return res.status(400).json(formatResponse({
+        success: false,
+        message: 'Rent already paid',
+        statusCode: 400
+      }));
+    }
+
+    rent.isPaid = true;
+    rent.paidAt = new Date();
+    await rent.save();
 
     res.status(200).json(formatResponse({
       message: 'Rent paid successfully',
-      data: result
+      data: rent
     }));
   } catch (err) {
     next(err);
   }
 };
 
-
 // 4. File complaint
-const { createComplaint } = require('../services/complaintService');
-
 exports.fileComplaint = async (req, res, next) => {
   try {
     const { flatId, category, subject, description } = req.body;
-    const complaint = await createComplaint({
+
+    const flat = await Flat.findOne({ _id: flatId, tenant: req.user._id });
+    if (!flat) {
+      return res.status(403).json(formatResponse({
+        success: false,
+        message: 'Unauthorized access to flat',
+        statusCode: 403
+      }));
+    }
+
+    const complaint = await Complaint.create({
       raisedBy: req.user._id,
       userRole: 'tenant',
-      flatId,
+      flat: flat._id,
+      building: flat.building,
+      society: flat.society,
       category,
       subject,
-      description
+      description,
     });
 
     res.status(201).json(formatResponse({
@@ -1537,23 +1506,19 @@ exports.fileComplaint = async (req, res, next) => {
 // 5. View own complaints
 exports.getMyComplaints = async (req, res, next) => {
   try {
-    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
-    const [complaints, total] = await Promise.all([
-      Complaint.find({ raisedBy: req.user._id, userRole: 'tenant' })
-        .populate('flat building').skip(skip).limit(limit),
-      Complaint.countDocuments({ raisedBy: req.user._id, userRole: 'tenant' })
-    ]);
+    const complaints = await Complaint.find({
+      raisedBy: req.user._id,
+      userRole: 'tenant'
+    }).populate('flat').populate('building');
 
     res.status(200).json(formatResponse({
       message: 'Complaints retrieved',
-      data: complaints,
-      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
+      data: complaints
     }));
   } catch (err) {
     next(err);
   }
 };
-
 
 // 6. View announcements
 exports.getRelevantAnnouncements = async (req, res, next) => {
@@ -1617,19 +1582,32 @@ exports.getUnpaidMaintenance = async (req, res, next) => {
 };
 
 // 8. Pay maintenance
-const { payMaintenance } = require('../services/paymentService');
-
 exports.payMaintenance = async (req, res, next) => {
   try {
-    const result = await payMaintenance({
-      maintenanceId: req.params.maintenanceId,
-      userId: req.user._id,
-      role: 'tenant'
-    });
+    const maintenance = await Maintenance.findById(req.params.maintenanceId).populate('flat');
+    if (!maintenance || maintenance.flat.tenant.toString() !== req.user._id.toString()) {
+      return res.status(403).json(formatResponse({
+        success: false,
+        message: 'Unauthorized or not found',
+        statusCode: 403
+      }));
+    }
+
+    if (maintenance.isPaid) {
+      return res.status(400).json(formatResponse({
+        success: false,
+        message: 'Already paid',
+        statusCode: 400
+      }));
+    }
+
+    maintenance.isPaid = true;
+    maintenance.paidAt = new Date();
+    await maintenance.save();
 
     res.status(200).json(formatResponse({
       message: 'Maintenance paid successfully',
-      data: result
+      data: maintenance
     }));
   } catch (err) {
     next(err);
@@ -1655,71 +1633,6 @@ exports.getTenantDashboard = async (req, res, next) => {
     next(err);
   }
 };
-
-// 2.5. Get current month's rent (if exists)
-exports.getCurrentRent = async (req, res, next) => {
-  try {
-    const flat = await Flat.findOne({ tenant: req.user._id });
-    if (!flat) {
-      return res.status(404).json(formatResponse({
-        success: false,
-        message: 'Flat not assigned',
-        statusCode: 404
-      }));
-    }
-
-    const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-
-    const rent = await Rent.findOne({
-      flat: flat._id,
-      tenant: req.user._id,
-      billingMonth: currentMonth,
-    });
-
-    if (!rent) {
-      return res.status(404).json(formatResponse({
-        success: false,
-        message: 'No rent record found for this month',
-        statusCode: 404
-      }));
-    }
-
-    res.status(200).json(formatResponse({
-      message: 'Current month rent retrieved',
-      data: rent
-    }));
-  } catch (err) {
-    next(err);
-  }
-};
-exports.updateMyProfile = async (req, res, next) => {
-  try {
-    const { name, phone, profilePic } = req.body;
-
-    const user = await User.findById(req.user._id);
-    if (!user) return res.status(404).json(formatResponse({ success: false, message: 'User not found' }));
-
-    if (name) user.name = name;
-    if (phone) user.phone = phone;
-    if (profilePic) user.profilePic = profilePic;
-
-    await user.save();
-
-    res.status(200).json(formatResponse({
-      message: 'Profile updated successfully',
-      data: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        profilePic: user.profilePic
-      }
-    }));
-  } catch (err) {
-    next(err);
-  }
-};
-
 
 │   │   # --- End: tenantController.js ---
 
@@ -1790,34 +1703,26 @@ module.exports = { errorHandler, asyncHandler };
 │   │   ├─ roleAccessGuard.js
 
 │   │   # --- Begin: roleAccessGuard.js ---
-const formatResponse = require('../utils/responseFormatter');
 const Flat = require('../models/Flat');
 
+// Check if owner is assigned to any flat
 const verifyOwnerAssigned = async (req, res, next) => {
   const flat = await Flat.findOne({ owner: req.user._id });
-  if (!flat) {
-    return res.status(403).json(formatResponse({
-      success: false,
-      message: 'Owner not assigned to any flat',
-      statusCode: 403
-    }));
-  }
+  if (!flat) return res.status(403).json({ message: "Owner is not registered or assigned to any flat yet." });
   next();
 };
 
+// Check if tenant is assigned to any flat
 const verifyTenantAssigned = async (req, res, next) => {
   const flat = await Flat.findOne({ tenant: req.user._id });
-  if (!flat) {
-    return res.status(403).json(formatResponse({
-      success: false,
-      message: 'Tenant not assigned to any flat',
-      statusCode: 403
-    }));
-  }
+  if (!flat) return res.status(403).json({ message: "Tenant is not assigned to any flat yet." });
   next();
 };
 
-module.exports = { verifyOwnerAssigned, verifyTenantAssigned };
+module.exports = {
+  verifyOwnerAssigned,
+  verifyTenantAssigned
+};
 
 │   │   # --- End: roleAccessGuard.js ---
 
@@ -1839,24 +1744,6 @@ const roleMiddleware = (roles) => {
 module.exports = roleMiddleware;
 
 │   │   # --- End: roleMiddleware.js ---
-
-│   │   ├─ validate.js
-
-│   │   # --- Begin: validate.js ---
-const { validationResult } = require('express-validator');
-
-module.exports = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation failed',
-      errors: errors.array()
-    });
-  }
-  next();
-};
-│   │   # --- End: validate.js ---
 
 │   ├─ models/
 │   │   ├─ Announcement.js
@@ -2429,26 +2316,16 @@ const roleMiddleware = require('../middleware/roleMiddleware');
 // Admin-only routes
 router.use(authMiddleware);
 router.use(roleMiddleware('admin'));
-const validate = require('../middleware/validate');
-const {
-  societyCreateValidator,
-} = require('../validators/societyValidator');
-const {
-  
-  assignOwnerValidator,
-} = require('../validators/flatValidator');
 
 // Core society & building management
-router.post('/societies', societyCreateValidator, validate, adminController.createSociety);
-
-router.get('/societies/my', adminController.getMySocieties);
+router.get('/societies', adminController.getMySocieties);
 router.post('/buildings', adminController.createBuilding);
 router.delete('/buildings/:id', adminController.deleteBuilding);
 
 // Flat management
-router.patch('/flats/:flatId/assign-owner', assignOwnerValidator, validate, adminController.assignOwnerToFlat);
+router.patch('/flats/:flatId/assign-owner', adminController.assignFlatOwner);
 router.patch('/flats/:flatId/remove-owner', adminController.removeFlatOwner);
-
+// router.patch('/flats/:flatId/assign-tenant', adminController.assignFlatTenant);
 router.patch('/flats/:flatId/remove-tenant', adminController.removeFlatTenant);
 
 // Maintenance
@@ -2460,23 +2337,22 @@ router.get('/rent/history', adminController.getRentHistory);
 
 // Ownership requests
 router.get('/ownership-requests', adminController.getOwnershipRequests);
-router.patch('/ownership-requests/:id', adminController.reviewOwnershipRequest);
+router.post('/ownership-requests/review', adminController.reviewOwnershipRequest);
 
 // Announcements
 router.post('/announcements', adminController.createAnnouncement);
 
 // Complaints
 router.get('/complaints', adminController.getComplaints);
-router.patch('/complaints/:id', adminController.updateComplaintStatus);
+router.patch('/complaints', adminController.updateComplaintStatus);
 
 // Dashboard & documents
 router.get('/dashboard/overview', adminController.getAdminDashboard);
-// router.get('/documents', adminController.getAllAgreements);
-router.get('/flats/:flatId/info', adminController.getFlatInfo);
+router.get('/documents', adminController.getAllAgreements);
 
 // Notes & reminders
-router.patch('/societies/:id/note', adminController.addSocietyNote);
-router.post('/users/:userID/reminder', adminController.sendReminderToUser);
+router.post('/societies/:id/note', adminController.addSocietyNote);
+router.post('/reminders', adminController.sendReminderToUser);
 
 module.exports = router;
 
@@ -2508,26 +2384,22 @@ module.exports = router;
 │   │   ├─ authRoutes.js
 
 │   │   # --- Begin: authRoutes.js ---
-// routes/authRoutes.js
-
 const express = require('express');
 const router = express.Router();
-
 const authController = require('../controllers/authController');
-const { protect } = require('../middleware/authMiddleware');
 
-const validate = require('../middleware/validate');
-const { registerValidator, loginValidator } = require('../validators/authValidator');
-// Public Routes
-router.post('/register', registerValidator, validate, authController.registerUser);
-router.post('/login', loginValidator,validate, authController.loginUser);
-router.get('/token-status', authController.tokenStatus);
+const authMiddleware = require('../middleware/authMiddleware');
+const {registerValidation, loginValidation} = require('../validations/userValidation')
+
+
+router.post('/register', registerValidation, authController.registerUser);
+router.post('/login', loginValidation, authController.loginUser);
 
 // Protected Routes
-router.post('/logout', protect, authController.logoutUser);
-router.get('/me', protect, authController.getMe);
-router.patch('/change-password', protect, authController.changePassword);
-
+router.post('/logout', authMiddleware, authController.logoutUser);
+router.get('/me', authMiddleware, authController.getMe);
+router.put('/change-password', authMiddleware, authController.changePassword);
+router.get('/token-status', authMiddleware, authController.tokenStatus);
 module.exports = router;
 
 │   │   # --- End: authRoutes.js ---
@@ -2535,70 +2407,27 @@ module.exports = router;
 │   │   ├─ complaintRoutes.js
 
 │   │   # --- Begin: complaintRoutes.js ---
-// controllers/complaintController.js
+// routes/complaintRoutes.js
 
-const {
-    createComplaint,
-    getComplaintsByUser,
-    getAllComplaints,
-    updateComplaintStatus
-  } = require('../services/complaintService');
-  const formatResponse = require('../utils/responseFormatter');
-  const { asyncHandler } = require('../middleware/errorHandler');
-  
-  // For tenant or owner complaint creation
-  exports.createComplaint = asyncHandler(async (req, res) => {
-    const { flatId, category, subject, description } = req.body;
-    const complaint = await createComplaint({
-      raisedBy: req.user._id,
-      userRole: req.user.role,
-      flatId,
-      category,
-      subject,
-      description
-    });
-  
-    res.status(201).json(formatResponse({
-      message: 'Complaint created successfully',
-      data: complaint
-    }));
-  });
-  
-  // For fetching user’s own complaints
-  exports.getMyComplaints = asyncHandler(async (req, res) => {
-    const complaints = await getComplaintsByUser(req.user._id, req.user.role);
-    res.json(formatResponse({
-      message: 'Your complaints',
-      data: complaints
-    }));
-  });
-  
-  // Admin: fetch all complaints
-  exports.getAllComplaints = asyncHandler(async (req, res) => {
-    const complaints = await getAllComplaints();
-    res.json(formatResponse({
-      message: 'All complaints retrieved',
-      data: complaints
-    }));
-  });
-  
-  // Admin: update complaint status
-  exports.updateComplaintStatus = asyncHandler(async (req, res) => {
-    const { complaintId, status, adminNote } = req.body;
-  
-    const complaint = await updateComplaintStatus({
-      complaintId,
-      status,
-      adminNote,
-      resolvedBy: req.user._id
-    });
-  
-    res.json(formatResponse({
-      message: 'Complaint updated',
-      data: complaint
-    }));
-  });
-  
+const express = require('express');
+const router = express.Router();
+const complaintController = require('../controllers/complaintController');
+const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
+
+// All routes require authentication
+router.use(authMiddleware);
+
+// Admin-only routes
+router.get('/all', roleMiddleware('admin'), complaintController.getAllComplaints);
+router.delete('/:id', roleMiddleware('admin'), complaintController.deleteComplaint);
+
+// Admin or Owner can fetch complaints by building and resolve
+router.get('/building/:buildingId', roleMiddleware(['admin', 'owner']), complaintController.getComplaintsByBuilding);
+router.put('/:id/resolve', roleMiddleware(['admin', 'owner']), complaintController.resolveComplaint);
+
+module.exports = router;
+
 │   │   # --- End: complaintRoutes.js ---
 
 │   │   ├─ ownerRoutes.js
@@ -2623,14 +2452,12 @@ router.get('/flats/:id/society', ownerController.getFlatSocietyInfo);
 
 // 📨 Ownership Requests
 router.post('/ownership-request', ownerController.submitOwnershipRequest);
-router.patch('/flats/:id/assign-tenant', ownerController.assignTenantToMyFlat);
+router.post('/assign-tenant', ownerController.assignTenantToMyFlat);
 
 // 💰 Rent & Maintenance
 router.get('/rent-history', ownerController.getRentHistory);
 router.get('/maintenance-due', ownerController.getUnpaidMaintenance);
-router.patch('/maintenance/:maintenanceId/pay', ownerController.payMaintenance);
-router.patch('/flats/:flatId/remove-tenant', ownerController.removeTenantFromMyFlat);
-router.patch('/flats/:flatId/update-tenant', ownerController.updateTenantForMyFlat);
+router.post('/pay-maintenance/:maintenanceId', ownerController.payMaintenance);
 
 // 🛠 Complaints
 router.post('/complaints', ownerController.fileComplaint);
@@ -2647,15 +2474,21 @@ module.exports = router;
 
 │   │   # --- Begin: ownershipRequestRoutes.js ---
 // routes/ownershipRequestRoutes.js
+
 const express = require('express');
 const router = express.Router();
-const controller = require('../controllers/ownershipRequestController');
-const { protect } = require('../middleware/authMiddleware');
-const { roleMiddleware } = require('../middleware/roleMiddleware');
+const ownershipRequestController = require('../controllers/ownershipRequestController');
 
-// Admin routes
-router.get('/', protect, roleMiddleware(['admin']), controller.getOwnershipRequests);
-router.patch('/:requestId', protect, roleMiddleware(['admin']), controller.reviewOwnershipRequest);
+const authMiddleware = require('../middleware/authMiddleware');
+const roleMiddleware = require('../middleware/roleMiddleware');
+
+// Owner creates and views their requests
+router.post('/', authMiddleware, roleMiddleware(['owner']), ownershipRequestController.createOwnershipRequest);
+router.get('/my-requests', authMiddleware, roleMiddleware(['owner']), ownershipRequestController.getMyOwnershipRequests);
+
+// Admin views and updates requests
+router.get('/admin', authMiddleware, roleMiddleware(['admin']), ownershipRequestController.getAllOwnershipRequests);
+router.put('/admin/:id', authMiddleware, roleMiddleware(['admin']), ownershipRequestController.updateOwnershipRequestStatus);
 
 module.exports = router;
 
@@ -2683,10 +2516,9 @@ router.get('/my-flat', tenantController.getMyFlat);
 // 💰 Rent & Maintenance
 router.get('/rent-history', tenantController.getRentHistory);
 router.get('/current-rent', tenantController.getCurrentRent);
-router.patch('/rent/:rentId/pay', tenantController.payRent);
+router.post('/pay-rent/:rentId', tenantController.payRent);
 router.get('/maintenance-due', tenantController.getUnpaidMaintenance);
-router.patch('/maintenance/:maintenanceId/pay', tenantController.payMaintenance);
-router.patch('/profile', tenantController.updateMyProfile);
+router.post('/pay-maintenance/:maintenanceId', tenantController.payMaintenance);
 
 // 🛠 Complaints
 router.post('/complaints', tenantController.fileComplaint);
@@ -2702,264 +2534,8 @@ module.exports = router;
 
 │   │   # --- End: tenantRoutes.js ---
 
-│   ├─ services/
-│   │   ├─ authService.js
-
-│   │   # --- Begin: authService.js ---
-// services/authService.js
-
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const Flat = require('../models/Flat');
-
-// Generate a signed JWT and return cookie options
-exports.generateTokenCookie = (res, userId) => {
-  const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  });
-
-  res.cookie('token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  });
-
-  return token;
-};
-
-// Validate user login
-exports.loginUser = async ({ email, password }) => {
-  const user = await User.findOne({ email }).select('+password');
-  if (!user || !(await user.comparePassword(password))) {
-    throw new Error('Invalid email or password');
-  }
-
-  // If owner, must be assigned
-  if (user.role === 'owner') {
-    const flat = await Flat.findOne({ owner: user._id });
-    if (!flat) throw new Error('Owner is not assigned to any flat');
-  }
-
-  // If tenant, must be assigned
-  if (user.role === 'tenant') {
-    const flat = await Flat.findOne({ tenant: user._id });
-    if (!flat) throw new Error('Tenant is not assigned to any flat');
-  }
-
-  return user;
-};
-
-// Register new user
-exports.registerUser = async ({ name, email, password, phone, role = 'tenant' }) => {
-  const existing = await User.findOne({ email });
-  if (existing) throw new Error('Email is already registered');
-
-  const user = await User.create({ name, email, password, phone, role });
-  return user;
-};
-
-// Change password
-exports.changePassword = async ({ userId, currentPassword, newPassword }) => {
-  const user = await User.findById(userId).select('+password');
-  if (!user || !(await user.comparePassword(currentPassword))) {
-    throw new Error('Current password is incorrect');
-  }
-
-  user.password = newPassword;
-  await user.save();
-};
-
-// Token check
-exports.validateToken = (token) => {
-  return jwt.verify(token, process.env.JWT_SECRET);
-};
-
-│   │   # --- End: authService.js ---
-
-│   │   ├─ complaintServices
-
-│   │   # --- Begin: complaintServices ---
-// services/complaintService.js
-const Complaint = require('../models/Complaint');
-const Flat = require('../models/Flat');
-
-exports.createComplaint = async ({ raisedBy, userRole, flatId, category, subject, description }) => {
-  const flat = await Flat.findById(flatId).populate('building society');
-  if (!flat) throw new Error('Flat not found');
-
-  const complaint = await Complaint.create({
-    raisedBy,
-    userRole,
-    flat: flat._id,
-    building: flat.building._id,
-    society: flat.society._id,
-    category,
-    subject,
-    description,
-  });
-
-  return complaint;
-};
-
-exports.getComplaintsByUser = async (userId, userRole) => {
-  return await Complaint.find({ raisedBy: userId, userRole })
-    .populate('flat')
-    .populate('building')
-    .populate('society');
-};
-
-// Updated getAllComplaints()
-exports.getAllComplaints = async ({ page = 1, limit = 10, status, category }) => {
-    const { skip } = require('../utils/pagination').paginate({ page, limit });
-  
-    const query = {};
-    if (status) query.status = status;
-    if (category) query.category = category;
-  
-    const complaints = await Complaint.find(query)
-      .skip(skip)
-      .limit(limit)
-      .populate('raisedBy', 'name email role')
-      .populate('flat building society');
-  
-    const total = await Complaint.countDocuments(query);
-  
-    return { complaints, total };
-  };
-  
-
-// services/complaintService.js (add this)
-exports.updateComplaintStatus = async ({ complaintId, status, adminNote, resolvedBy }) => {
-    const complaint = await Complaint.findById(complaintId);
-    if (!complaint) throw new Error('Complaint not found');
-  
-    complaint.status = status;
-    complaint.adminNote = adminNote || '';
-    complaint.resolvedBy = resolvedBy;
-    complaint.resolvedOn = new Date();
-  
-    await complaint.save();
-    return complaint;
-  };
-  
-│   │   # --- End: complaintServices ---
-
-│   │   ├─ flatService.js
-
-│   │   # --- Begin: flatService.js ---
-// services/flatService.js
-const Flat = require('../models/Flat');
-const User = require('../models/User');
-
-exports.assignTenant = async ({ flatId, tenantId, ownerId }) => {
-  const flat = await Flat.findOne({ _id: flatId, owner: ownerId }).populate('society');
-  if (!flat) throw new Error('Unauthorized or flat not found');
-
-  const tenant = await User.findById(tenantId);
-  if (!tenant || tenant.role !== 'tenant') throw new Error('Invalid tenant');
-
-  flat.tenant = tenant._id;
-  flat.isRented = true;
-  flat.occupancyStatus = 'occupied-tenant';
-  await flat.save();
-
-  if (!tenant.society) {
-    tenant.society = flat.society._id;
-    await tenant.save();
-  }
-
-  return flat;
-};
-
-│   │   # --- End: flatService.js ---
-
-│   │   ├─ ownershipService.js
-
-│   │   # --- Begin: ownershipService.js ---
-// services/ownershipService.js
-const OwnershipRequest = require('../models/OwnershipRequest');
-const Flat = require('../models/Flat');
-
-exports.reviewOwnershipRequest = async ({ requestId, status, note, reviewerId }) => {
-  const request = await OwnershipRequest.findById(requestId);
-  if (!request) throw new Error('Ownership request not found');
-
-  request.status = status;
-  request.adminNote = note;
-  request.reviewedBy = reviewerId;
-  request.reviewedOn = new Date();
-  await request.save();
-
-  if (status === 'approved') {
-    await Flat.findByIdAndUpdate(request.flat, { owner: request.currentOwner });
-  }
-
-  return request;
-};
-
-│   │   # --- End: ownershipService.js ---
-
-│   │   ├─ paymentService.js
-
-│   │   # --- Begin: paymentService.js ---
-// services/paymentService.js
-const Maintenance = require('../models/Maintenance');
-const Rent = require('../models/Rent');
-
-exports.payMaintenance = async ({ maintenanceId, userId, role }) => {
-  const maintenance = await Maintenance.findById(maintenanceId).populate('flat');
-  if (!maintenance) throw new Error('Maintenance record not found');
-  if (maintenance.isPaid) throw new Error('Already paid');
-
-  const { flat } = maintenance;
-
-  const isValid = (role === 'owner' && flat.owner.toString() === userId && !flat.tenant) ||
-                  (role === 'tenant' && flat.tenant.toString() === userId);
-  if (!isValid) throw new Error('Unauthorized payment');
-
-  maintenance.isPaid = true;
-  maintenance.paidOn = new Date();
-  await maintenance.save();
-
-  return maintenance;
-};
-
-exports.payRent = async ({ rentId, userId }) => {
-  const rent = await Rent.findById(rentId).populate('tenant');
-  if (!rent) throw new Error('Rent record not found');
-  if (rent.isPaid) throw new Error('Rent already paid');
-
-  if (rent.tenant._id.toString() !== userId) throw new Error('Unauthorized rent payment');
-
-  rent.isPaid = true;
-  rent.paidOn = new Date();
-  await rent.save();
-
-  return rent;
-};
-
-│   │   # --- End: paymentService.js ---
-
 │   ├─ uploads/
 │   ├─ utils/
-│   │   ├─ formatResponse.js
-
-│   │   # --- Begin: formatResponse.js ---
-// utils/responseFormatter.js
-
-const formatResponse = ({ success = true, message = '', data = null, statusCode = 200 }) => {
-    return {
-      success,
-      message,
-      data,
-      statusCode
-    };
-  };
-  
-  module.exports = formatResponse;
-│   │   # --- End: formatResponse.js ---
-
 │   │   ├─ generateToken.js
 
 │   │   # --- Begin: generateToken.js ---
@@ -2984,29 +2560,50 @@ module.exports = generateToken;
 
 │   │   # --- End: generateToken.js ---
 
-│   │   ├─ logger.js
+│   │   ├─ invoiceGenerator.js
 
-│   │   # --- Begin: logger.js ---
-// utils/logger.js
-const morgan = require('morgan');
+│   │   # --- Begin: invoiceGenerator.js ---
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
+const path = require('path');
 
-const logger = morgan(':method :url :status :res[content-length] - :response-time ms');
+const generateInvoice = (invoiceData, filePath) => {
+  const doc = new PDFDocument();
+  doc.pipe(fs.createWriteStream(filePath));
 
-module.exports = logger;
+  doc.fontSize(20).text('Housing Society Invoice', { align: 'center' });
 
-│   │   # --- End: logger.js ---
+  doc.moveDown();
+  doc.fontSize(12).text(`Invoice ID: ${invoiceData._id}`);
+  doc.text(`Flat: ${invoiceData.flatNumber}`);
+  doc.text(`Name: ${invoiceData.userName}`);
+  doc.text(`Amount: ₹${invoiceData.amount}`);
+  doc.text(`Due Date: ${invoiceData.dueDate}`);
+  doc.text(`Generated On: ${new Date().toLocaleDateString()}`);
 
-│   │   ├─ pagination.js
+  doc.end();
+};
 
-│   │   # --- Begin: pagination.js ---
+module.exports = generateInvoice;
 
-exports.paginateQuery = (req) => {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.max(1, parseInt(req.query.limit) || 10);
-    const skip = (page - 1) * limit;
-    return { page, limit, skip };
-  }; 
-│   │   # --- End: pagination.js ---
+│   │   # --- End: invoiceGenerator.js ---
+
+│   │   ├─ responseFormatter.js
+
+│   │   # --- Begin: responseFormatter.js ---
+// utils/responseFormatter.js
+
+const formatResponse = ({ success = true, message = '', data = null, statusCode = 200 }) => {
+    return {
+      success,
+      message,
+      data,
+      statusCode
+    };
+  };
+  
+  module.exports = formatResponse;
+│   │   # --- End: responseFormatter.js ---
 
 │   │   ├─ sendEmail.js
 
@@ -3037,69 +2634,4 @@ const sendEmail = async (to, subject, text) => {
 module.exports = sendEmail;
 
 │   │   # --- End: sendEmail.js ---
-
-│   │   ├─ validateEnv.js
-
-│   │   # --- Begin: validateEnv.js ---
-// utils/validateEnv.js
-const required = [
-    'PORT', 'MONGO_URI', 'JWT_SECRET', 'EMAIL_USER', 'EMAIL_PASS', 'CLIENT_URL'
-  ];
-  
-  module.exports = function validateEnv() {
-    required.forEach(key => {
-      if (!process.env[key]) {
-        throw new Error(`❌ Missing required environment variable: ${key}`);
-      }
-    });
-  };
-  
-│   │   # --- End: validateEnv.js ---
-
-│   ├─ validators/
-│   │   ├─ authValidator.js
-
-│   │   # --- Begin: authValidator.js ---
-const { body } = require('express-validator');
-
-exports.registerValidator = [
-  body('name').notEmpty().withMessage('Name is required'),
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-];
-
-exports.loginValidator = [
-  body('email').isEmail().withMessage('Valid email is required'),
-  body('password').notEmpty().withMessage('Password is required'),
-];
-│   │   # --- End: authValidator.js ---
-
-│   │   ├─ flatValidator.js
-
-│   │   # --- Begin: flatValidator.js ---
-const { body } = require('express-validator');
-
-exports.assignOwnerValidator = [
-  body('ownerId').notEmpty().withMessage('Owner ID is required'),
-];
-
-exports.assignTenantValidator = [
-  body('tenantId').notEmpty().withMessage('Tenant ID is required'),
-];
-│   │   # --- End: flatValidator.js ---
-
-│   │   ├─ societyValidator.js
-
-│   │   # --- Begin: societyValidator.js ---
-exports.societyCreateValidator = [
-    body('name').notEmpty().withMessage('Name is required'),
-    body('registrationNumber').notEmpty().withMessage('Registration number is required'),
-    body('address.street').notEmpty().withMessage('Street is required'),
-    body('address.city').notEmpty().withMessage('City is required'),
-    body('address.state').notEmpty().withMessage('State is required'),
-    body('address.pincode').notEmpty().withMessage('Pincode is required'),
-    body('maintenancePolicy.frequency').notEmpty().withMessage('Maintenance frequency is required'),
-    body('maintenancePolicy.amountPerFlat').isNumeric().withMessage('Maintenance amount must be a number'),
-  ];
-│   │   # --- End: societyValidator.js ---
 
