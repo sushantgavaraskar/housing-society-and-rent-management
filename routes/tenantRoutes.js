@@ -27,7 +27,7 @@ router.post('/complaints', tenantController.fileComplaint);
 router.get('/complaints', tenantController.getMyComplaints);
 
 // 📣 Announcements
-router.get('/announcements', tenantController.getAnnouncements);
+router.get('/announcements', tenantController.getRelevantAnnouncements);
 
 // 📊 Dashboard
 router.get('/dashboard/overview', tenantController.getTenantDashboard);

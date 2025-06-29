@@ -3,7 +3,7 @@ const Complaint = require('../models/Complaint');
 const Maintenance = require('../models/Maintenance');
 const Rent = require('../models/Rent');
 const Announcement = require('../models/Announcement');
-const formatResponse = require('../utils/formatResponse');
+const formatResponse = require('../utils/responseFormatter');
 
 // 1. Get assigned flat
 exports.getMyFlat = async (req, res, next) => {

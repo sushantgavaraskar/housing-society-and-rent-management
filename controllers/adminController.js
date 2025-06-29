@@ -8,10 +8,10 @@ const Announcement = require('../models/Announcement');
 const Complaint = require('../models/Complaint');
 const Rent = require('../models/Rent');
 const sendEmail = require('../utils/sendEmail');
-const formatResponse = require('../utils/formatResponse');
+const formatResponse = require('../utils/responseFormatter');
+const { updateComplaintStatus, getAllComplaints } = require('../services/complaintService');
 
 // === SOCIETIES ===
-
 
 exports.createSociety = async (req, res, next) => {
   try {
@@ -281,7 +281,7 @@ exports.createAnnouncement = async (req, res, next) => {
 
 // === COMPLAINTS ===
 
-const { getAllComplaints } = require('../services/complaintService');
+// const  getAllComplaints  = require('../services/complaintService');
 
 exports.getComplaints = async (req, res, next) => {
   try {
@@ -296,7 +296,7 @@ exports.getComplaints = async (req, res, next) => {
 };
 
 
-const { updateComplaintStatus } = require('../services/complaintService');
+// const  updateComplaintStatus  = require('../services/complaintService');
 
 exports.updateComplaintStatus = async (req, res, next) => {
   try {

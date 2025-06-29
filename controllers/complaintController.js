@@ -7,7 +7,7 @@ const {
   updateComplaintStatus
 } = require('../services/complaintService');
 
-const formatResponse = require('../utils/formatResponse');
+const formatResponse = require('../utils/responseFormatter');
 
 // 1. Create a complaint (Tenant or Owner)
 exports.createComplaint = async (req, res, next) => {

@@ -2,8 +2,8 @@
 
 const { reviewOwnershipRequest } = require('../services/ownershipService');
 const OwnershipRequest = require('../models/OwnershipRequest');
-const formatResponse = require('../utils/formatResponse');
-const { asyncHandler } = require('../middleware/errorHandler');
+const formatResponse = require('../utils/responseFormatter');
+
 
 // Admin: list all ownership requests
 exports.getOwnershipRequests = async (req, res, next) => {

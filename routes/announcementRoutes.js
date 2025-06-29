@@ -9,9 +9,9 @@ const roleMiddleware = require('../middleware/roleMiddleware');
 
 // Protected routes for admin
 router.post('/', authMiddleware, roleMiddleware(['admin']), announcementController.createAnnouncement);
-router.delete('/:id', authMiddleware, roleMiddleware(['admin']), announcementController.deleteAnnouncement);
+router.delete('/:id', authMiddleware, roleMiddleware(['admin']), announcementController.getMyAnnouncements);
 
 // Public route to fetch announcements for a society (optionally filter by building)
-router.get('/:societyId', authMiddleware, announcementController.getAnnouncements);
+router.get('/:societyId', authMiddleware, announcementController.getAllAnnouncements);
 
 module.exports = router;

@@ -7,6 +7,7 @@ const flatSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Flat number is required'],
     trim: true,
+    index: true,
   },
   floor: {
     type: Number,

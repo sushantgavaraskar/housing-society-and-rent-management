@@ -1,6 +1,6 @@
 const Announcement = require('../models/Announcement');
 const Flat = require('../models/Flat');
-const formatResponse = require('../utils/formatResponse');
+const formatResponse = require('../utils/responseFormatter');
 
 // Create a new announcement
 exports.createAnnouncement = async (req, res, next) => {

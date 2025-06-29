@@ -4,7 +4,7 @@ const OwnershipRequest = require('../models/OwnershipRequest');
 const Rent = require('../models/Rent');
 const User = require('../models/User');
 const Maintenance = require('../models/Maintenance');
-const formatResponse = require('../utils/formatResponse');
+const formatResponse = require('../utils/responseFormatter');
 
 // 1. Get all flats owned by logged-in owner
 exports.getMyFlats = async (req, res, next) => {

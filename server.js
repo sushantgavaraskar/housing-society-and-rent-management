@@ -12,7 +12,7 @@ const compression = require('compression');
 const validateEnv = require('./utils/validateEnv');
 const logger = require('./utils/logger');
 const connectDB = require('./config/db');
-const { errorHandler } = require('./middleware/errorHandler');
+const  errorHandler  = require('./middleware/errorHandler');
 
 // Route Imports
 const authRoutes = require('./routes/authRoutes');
@@ -29,6 +29,13 @@ connectDB();
 
 const app = express();
 
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 // === Global Middleware ===
 app.use(helmet());
 // app.use(xss());
@@ -44,11 +51,6 @@ app.use(rateLimit({
 app.use(express.json());
 app.use(cookieParser());
 
-// ✅ CORS for dev/prod
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true,
-}));
 
 // === Routes ===
 app.use('/api/auth', authRoutes);

@@ -5,6 +5,7 @@ import Register from "./pages/auth/Register";
 import AdminDashboard from "./pages/admin/Dashboard";
 import OwnerDashboard from "./pages/owner/Dashboard";
 import TenantDashboard from "./pages/tenant/Dashboard";
+import Landing from "./pages/Landing";
 import { Toaster } from "sonner";
 function App() {
   return (

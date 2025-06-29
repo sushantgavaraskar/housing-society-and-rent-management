@@ -2,8 +2,8 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/ownershipRequestController');
-const { protect } = require('../middleware/authMiddleware');
-const { roleMiddleware } = require('../middleware/roleMiddleware');
+const  protect  = require('../middleware/authMiddleware');
+const  roleMiddleware  = require('../middleware/roleMiddleware');
 
 // Admin routes
 router.get('/', protect, roleMiddleware(['admin']), controller.getOwnershipRequests);

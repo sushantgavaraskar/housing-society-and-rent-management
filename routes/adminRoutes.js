@@ -1,20 +1,18 @@
 const express = require('express');
 const router = express.Router();
+
 const adminController = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
 
-// Admin-only routes
+const validate = require('../middleware/validate'); // ✅ FIXED PATH
+
+const { societyCreateValidator } = require('../validators/societyValidator');
+const { assignOwnerValidator } = require('../validators/flatValidator');
+
+
 router.use(authMiddleware);
 router.use(roleMiddleware('admin'));
-const validate = require('../middleware/validate');
-const {
-  societyCreateValidator,
-} = require('../validators/societyValidator');
-const {
-  
-  assignOwnerValidator,
-} = require('../validators/flatValidator');
 
 // Core society & building management
 router.post('/societies', societyCreateValidator, validate, adminController.createSociety);
@@ -24,7 +22,7 @@ router.post('/buildings', adminController.createBuilding);
 router.delete('/buildings/:id', adminController.deleteBuilding);
 
 // Flat management
-router.patch('/flats/:flatId/assign-owner', assignOwnerValidator, validate, adminController.assignOwnerToFlat);
+router.patch('/flats/:flatId/assign-owner', assignOwnerValidator, validate, adminController.assignFlatOwner);
 router.patch('/flats/:flatId/remove-owner', adminController.removeFlatOwner);
 
 router.patch('/flats/:flatId/remove-tenant', adminController.removeFlatTenant);

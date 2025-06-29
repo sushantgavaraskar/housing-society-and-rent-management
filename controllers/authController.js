@@ -8,7 +8,7 @@ const {
   validateToken
 } = require('../services/authService');
 
-const formatResponse = require('../utils/formatResponse');
+const formatResponse = require('../utils/responseFormatter');
 const User = require('../models/User');
 
 // 1. Register a new user
@@ -121,32 +121,3 @@ exports.changePassword = async (req, res, next) => {
 };
 
 // 6. Validate token status
-exports.tokenStatus = async (req, res, next) => {
-  try {
-    const token = req.cookies.token || (
-      req.headers.authorization?.startsWith('Bearer') &&
-      req.headers.authorization.split(' ')[1]
-    );
-
-    if (!token) {
-      return res.status(401).json(formatResponse({
-        success: false,
-        message: 'Token missing',
-        statusCode: 401
-      }));
-    }
-
-    const decoded = validateToken(token);
-
-    res.status(200).json(formatResponse({
-      message: 'Token is valid',
-      data: { userId: decoded.id }
-    }));
-  } catch (err) {
-    return res.status(401).json(formatResponse({
-      success: false,
-      message: 'Invalid token',
-      statusCode: 401
-    }));
-  }
-};

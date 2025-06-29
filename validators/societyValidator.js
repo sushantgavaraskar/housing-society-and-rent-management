@@ -1,3 +1,5 @@
+const { body } = require('express-validator');
+
 exports.societyCreateValidator = [
     body('name').notEmpty().withMessage('Name is required'),
     body('registrationNumber').notEmpty().withMessage('Registration number is required'),

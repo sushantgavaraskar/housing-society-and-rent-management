@@ -60,7 +60,7 @@ const complaintSchema = new mongoose.Schema({
   adminNote: {
     type: String,
     trim: true,
-    default: '',
+    default: "",
   },
 }, {
   timestamps: true,
