@@ -3,19 +3,25 @@
 
 const express = require('express');
 const router = express.Router();
-const complaintController = require('../controllers/complaintController');
+
+const { createComplaint, getMyComplaints, getAllComplaints, updateComplaintStatus } = require('../controllers/complaintController');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
+const validate = require('../middleware/validate');
+const { complaintCreateValidator, complaintStatusUpdateValidator, complaintsQueryValidator } = require('../validators/complaintValidator');
 
-// All routes require authentication
 router.use(authMiddleware);
 
-router.patch('/complaint' , roleMiddleware(['tenant', 'owner']), complaintController.createComplaint);
+// POST /api/complaints/ - Create a new complaint (Owner or Tenant)
+router.post('/', roleMiddleware(['owner', 'tenant']), complaintCreateValidator, validate, createComplaint);
 
-// Admin-only routes
-router.get('/all', roleMiddleware('admin'), complaintController.getAllComplaints);
-router.delete('/:id', roleMiddleware('owner'), complaintController.getMyComplaints);
+// GET /api/complaints/my - Get complaints filed by the logged-in user
+router.get('/my', getMyComplaints);
 
-router.patch('/:id/status', roleMiddleware('admin'), complaintController.updateComplaintStatus);
+// GET /api/complaints/ - Get all complaints (Admin only)
+router.get('/', roleMiddleware('admin'), complaintsQueryValidator, validate, getAllComplaints);
+
+// PATCH /api/complaints/:id/status - Update complaint status (Admin only)
+router.patch('/:id/status', roleMiddleware('admin'), complaintStatusUpdateValidator, validate, updateComplaintStatus);
 
 module.exports = router;

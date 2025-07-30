@@ -65,9 +65,11 @@ const complaintSchema = new mongoose.Schema({
 }, {
   timestamps: true,
 });
+
+// Indexes
 complaintSchema.index({ raisedBy: 1 });
 complaintSchema.index({ flat: 1 });
 complaintSchema.index({ society: 1 });
-
+complaintSchema.index({ status: 1 }); // Index for status filtering
 
 module.exports = mongoose.model('Complaint', complaintSchema);

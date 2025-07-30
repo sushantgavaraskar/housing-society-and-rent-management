@@ -4,35 +4,23 @@ const Flat = require('../models/Flat');
 const User = require('../models/User');
 const Maintenance = require('../models/Maintenance');
 const OwnershipRequest = require('../models/OwnershipRequest');
-const Announcement = require('../models/Announcement');
 const Complaint = require('../models/Complaint');
 const Rent = require('../models/Rent');
 const sendEmail = require('../utils/sendEmail');
 const formatResponse = require('../utils/responseFormatter');
 const { updateComplaintStatus, getAllComplaints } = require('../services/complaintService');
+const DashboardService = require('../services/dashboardService');
+const SocietyService = require('../services/societyService');
+const BuildingService = require('../services/buildingService');
+const FlatService = require('../services/flatService');
+const UserService = require('../services/userService');
+const RentService = require('../services/rentService');
 
 // === SOCIETIES ===
 
 exports.createSociety = async (req, res, next) => {
   try {
-    const { name, registrationNumber, address, maintenancePolicy } = req.body;
-
-    const existing = await Society.findOne({ registrationNumber });
-    if (existing) {
-      return res.status(400).json(formatResponse({
-        success: false,
-        message: 'Society with this registration number already exists',
-        statusCode: 400
-      }));
-    }
-
-    const society = await Society.create({
-      name,
-      registrationNumber,
-      address,
-      maintenancePolicy,
-      admin: req.user._id
-    });
+    const society = await SocietyService.createSociety(req.body, req.user._id);
 
     res.status(201).json(formatResponse({
       message: 'Society created successfully',
@@ -45,21 +33,44 @@ exports.createSociety = async (req, res, next) => {
 
 exports.getMySocieties = async (req, res, next) => {
   try {
-    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
-    const [societies, total] = await Promise.all([
-      Society.find({ admin: req.user._id }).skip(skip).limit(limit),
-      Society.countDocuments({ admin: req.user._id })
-    ]);
+    const result = await SocietyService.getSocietiesByAdmin(req.user._id, req.pagination);
 
     res.json(formatResponse({
-      message: 'Societies retrieved',
-      data: societies,
+      message: 'Societies retrieved successfully',
+      data: result.societies,
       pagination: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit)
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        pages: result.pages
       }
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateSociety = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const society = await SocietyService.updateSociety(id, req.body, req.user._id);
+
+    res.json(formatResponse({
+      message: 'Society updated successfully',
+      data: society
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteSociety = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await SocietyService.deleteSociety(id, req.user._id);
+
+    res.json(formatResponse({
+      message: 'Society and all associated buildings/flats deleted successfully'
     }));
   } catch (err) {
     next(err);
@@ -70,15 +81,26 @@ exports.getMySocieties = async (req, res, next) => {
 
 exports.createBuilding = async (req, res, next) => {
   try {
-    const { societyId, name, totalFloors, totalFlats, addressLabel } = req.body;
-    const society = await Society.findById(societyId);
-    if (!society) return res.status(404).json(formatResponse({ success: false, message: 'Society not found', statusCode: 404 }));
+    const building = await BuildingService.createBuilding(req.body);
 
-    const building = await Building.create({ name, totalFloors, totalFlats, addressLabel, society: societyId });
-    society.totalBuildings += 1;
-    await society.save();
+    res.status(201).json(formatResponse({
+      message: 'Building created successfully',
+      data: building
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
 
-    res.status(201).json(formatResponse({ message: 'Building created', data: building }));
+exports.updateBuilding = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const building = await BuildingService.updateBuilding(id, req.body);
+
+    res.json(formatResponse({
+      message: 'Building updated successfully',
+      data: building
+    }));
   } catch (err) {
     next(err);
   }
@@ -86,36 +108,42 @@ exports.createBuilding = async (req, res, next) => {
 
 exports.deleteBuilding = async (req, res, next) => {
   try {
-    const building = await Building.findByIdAndDelete(req.params.id);
-    if (!building) return res.status(404).json(formatResponse({ success: false, message: 'Building not found', statusCode: 404 }));
+    const { id } = req.params;
+    await BuildingService.deleteBuilding(id);
 
-    res.json(formatResponse({ message: 'Building deleted' }));
+    res.json(formatResponse({
+      message: 'Building deleted successfully'
+    }));
   } catch (err) {
     next(err);
   }
 };
 
-// === FLAT OWNERSHIP ===
+// === FLAT MANAGEMENT ===
+
+exports.createFlats = async (req, res, next) => {
+  try {
+    const { buildingId, totalFlats } = req.body;
+    const createdFlats = await FlatService.createFlatsForBuilding(buildingId, totalFlats, req.user._id);
+
+    res.status(201).json(formatResponse({
+      message: `${createdFlats.length} flats created successfully`,
+      data: { count: createdFlats.length, building: buildingId }
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
 
 exports.assignFlatOwner = async (req, res, next) => {
   try {
     const { ownerId } = req.body;
-    const flat = await Flat.findById(req.params.flatId).populate('society');
-    const owner = await User.findById(ownerId);
+    const flat = await FlatService.assignOwnerToFlat(req.params.flatId, ownerId);
 
-    if (!flat || !owner || owner.role !== 'owner') {
-      return res.status(400).json(formatResponse({ success: false, message: 'Invalid flat or owner', statusCode: 400 }));
-    }
-
-    flat.owner = owner._id;
-    await flat.save();
-
-    if (!owner.society) {
-      owner.society = flat.society._id;
-      await owner.save();
-    }
-
-    res.json(formatResponse({ message: 'Owner assigned successfully', data: flat }));
+    res.json(formatResponse({
+      message: 'Owner assigned successfully',
+      data: flat
+    }));
   } catch (err) {
     next(err);
   }
@@ -123,12 +151,12 @@ exports.assignFlatOwner = async (req, res, next) => {
 
 exports.removeFlatOwner = async (req, res, next) => {
   try {
-    const flat = await Flat.findById(req.params.flatId);
-    if (!flat) return res.status(404).json(formatResponse({ success: false, message: 'Flat not found', statusCode: 404 }));
+    const flat = await FlatService.removeOwnerFromFlat(req.params.flatId);
 
-    flat.owner = null;
-    await flat.save();
-    res.json(formatResponse({ message: 'Owner removed successfully' }));
+    res.json(formatResponse({
+      message: 'Owner removed successfully',
+      data: flat
+    }));
   } catch (err) {
     next(err);
   }
@@ -136,14 +164,121 @@ exports.removeFlatOwner = async (req, res, next) => {
 
 exports.removeFlatTenant = async (req, res, next) => {
   try {
-    const flat = await Flat.findById(req.params.flatId);
-    if (!flat) return res.status(404).json(formatResponse({ success: false, message: 'Flat not found', statusCode: 404 }));
+    const flat = await FlatService.removeTenantFromFlat(req.params.flatId, req.user._id);
 
-    flat.tenant = null;
-    flat.isRented = false;
-    flat.occupancyStatus = 'vacant';
-    await flat.save();
-    res.json(formatResponse({ message: 'Tenant removed successfully' }));
+    res.json(formatResponse({
+      message: 'Tenant removed successfully',
+      data: flat
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// === USER MANAGEMENT ===
+
+exports.getAllUsers = async (req, res, next) => {
+  try {
+    const filters = {
+      role: req.query.role,
+      isActive: req.query.isActive !== undefined ? req.query.isActive === 'true' : undefined,
+      society: req.query.society
+    };
+
+    const result = await UserService.getAllUsers(filters, req.pagination);
+
+    res.json(formatResponse({
+      message: 'Users retrieved successfully',
+      data: result.users,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        pages: result.pages
+      }
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getUserById = async (req, res, next) => {
+  try {
+    const user = await UserService.getUserById(req.params.id);
+
+    res.json(formatResponse({
+      message: 'User details retrieved successfully',
+      data: user
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateUser = async (req, res, next) => {
+  try {
+    const user = await UserService.updateUser(req.params.id, req.body);
+
+    res.json(formatResponse({
+      message: 'User updated successfully',
+      data: user
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.toggleUserStatus = async (req, res, next) => {
+  try {
+    const user = await UserService.toggleUserStatus(req.params.id);
+
+    res.json(formatResponse({
+      message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully`,
+      data: user
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// === RENT MANAGEMENT ===
+
+exports.generateRent = async (req, res, next) => {
+  try {
+    const { billingMonth, societyId } = req.body;
+    const result = await RentService.generateRentForMonth(billingMonth, societyId);
+
+    res.status(201).json(formatResponse({
+      message: result.message,
+      data: result
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getRentHistory = async (req, res, next) => {
+  try {
+    const filters = {
+      status: req.query.status,
+      society: req.query.society,
+      flat: req.query.flat,
+      tenant: req.query.tenant,
+      owner: req.query.owner
+    };
+
+    const result = await RentService.getRentHistory(filters, req.pagination);
+
+    res.json(formatResponse({
+      message: 'Rent history retrieved successfully',
+      data: result.rents,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        pages: result.pages
+      }
+    }));
   } catch (err) {
     next(err);
   }
@@ -178,7 +313,7 @@ exports.generateMaintenance = async (req, res, next) => {
 exports.getMaintenanceStatus = async (req, res, next) => {
   try {
     const { filterBy, id } = req.query;
-    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
+    const { page, limit, skip } = req.pagination || { page: 1, limit: 10, skip: 0 };
     let query = {};
 
     if (filterBy === 'society') query.society = id;
@@ -196,27 +331,6 @@ exports.getMaintenanceStatus = async (req, res, next) => {
     res.json(formatResponse({
       message: 'Maintenance records retrieved',
       data: records,
-      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
-    }));
-  } catch (err) {
-    next(err);
-  }
-};
-
-
-// === RENT ===
-
-exports.getRentHistory = async (req, res, next) => {
-  try {
-    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
-    const [rents, total] = await Promise.all([
-      Rent.find().populate('flat tenant').skip(skip).limit(limit),
-      Rent.countDocuments()
-    ]);
-
-    res.json(formatResponse({
-      message: 'Rent history retrieved',
-      data: rents,
       pagination: { total, page, limit, pages: Math.ceil(total / limit) }
     }));
   } catch (err) {
@@ -256,32 +370,7 @@ exports.reviewOwnershipRequest = async (req, res, next) => {
   }
 };
 
-
-// === ANNOUNCEMENTS ===
-
-exports.createAnnouncement = async (req, res, next) => {
-  try {
-    const { title, message, society, building, audience, validTill } = req.body;
-
-    const announcement = await Announcement.create({
-      title,
-      message,
-      createdBy: req.user._id,
-      society,
-      building: building || null,
-      audience,
-      validTill: validTill || null,
-    });
-
-    res.status(201).json(formatResponse({ message: 'Announcement created', data: announcement }));
-  } catch (err) {
-    next(err);
-  }
-};
-
 // === COMPLAINTS ===
-
-// const  getAllComplaints  = require('../services/complaintService');
 
 exports.getComplaints = async (req, res, next) => {
   try {
@@ -294,9 +383,6 @@ exports.getComplaints = async (req, res, next) => {
     next(err);
   }
 };
-
-
-// const  updateComplaintStatus  = require('../services/complaintService');
 
 exports.updateComplaintStatus = async (req, res, next) => {
   try {
@@ -317,38 +403,32 @@ exports.updateComplaintStatus = async (req, res, next) => {
   }
 };
 
-
 // === DASHBOARD ===
 
 exports.getAdminDashboard = async (req, res, next) => {
   try {
-    const totalFlats = await Flat.countDocuments();
-    const totalTenants = await User.countDocuments({ role: 'tenant' });
-    const totalOwners = await User.countDocuments({ role: 'owner' });
-    const totalPendingComplaints = await Complaint.countDocuments({ status: 'pending' });
+    const dashboardData = await DashboardService.getAdminDashboard(req.user._id);
 
     res.json(formatResponse({
-      message: 'Admin dashboard data',
-      data: { totalFlats, totalTenants, totalOwners, totalPendingComplaints }
+      message: 'Admin dashboard data retrieved successfully',
+      data: dashboardData
     }));
   } catch (err) {
     next(err);
   }
 };
 
-
-
 // === NOTES & REMINDERS ===
 
 exports.addSocietyNote = async (req, res, next) => {
   try {
     const { note } = req.body;
-    const society = await Society.findById(req.params.id);
-    if (!society) return res.status(404).json(formatResponse({ success: false, message: 'Society not found', statusCode: 404 }));
+    const society = await SocietyService.addSocietyNote(req.params.id, note, req.user._id);
 
-    society.adminNote = note;
-    await society.save();
-    res.json(formatResponse({ message: 'Note added to society' }));
+    res.json(formatResponse({
+      message: 'Note added to society successfully',
+      data: society
+    }));
   } catch (err) {
     next(err);
   }
@@ -366,25 +446,14 @@ exports.sendReminderToUser = async (req, res, next) => {
     next(err);
   }
 };
+
 // Get full flat info (owner, tenant, society, building)
 exports.getFlatInfo = async (req, res, next) => {
   try {
-    const flat = await Flat.findById(req.params.flatId)
-      .populate('owner', 'name email phone')
-      .populate('tenant', 'name email phone')
-      .populate('building')
-      .populate('society');
-
-    if (!flat) {
-      return res.status(404).json(formatResponse({
-        success: false,
-        message: 'Flat not found',
-        statusCode: 404
-      }));
-    }
+    const flat = await FlatService.getFlatById(req.params.flatId);
 
     res.json(formatResponse({
-      message: 'Flat details retrieved',
+      message: 'Flat details retrieved successfully',
       data: flat
     }));
   } catch (err) {

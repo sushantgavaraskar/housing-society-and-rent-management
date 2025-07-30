@@ -46,8 +46,11 @@ const flatSchema = new mongoose.Schema({
 }, {
   timestamps: true,
 });
+
+// Indexes
 flatSchema.index({ tenant: 1 });
 flatSchema.index({ society: 1 });
 flatSchema.index({ building: 1 });
+flatSchema.index({ building: 1, flatNumber: 1 }); // Compound index for common query pattern
 
 module.exports = mongoose.model('Flat', flatSchema);

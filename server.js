@@ -6,11 +6,11 @@ const cors = require('cors');
 
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-// const mongoSanitize = require('express-mongo-sanitize');
-// const xss = require('xss-clean');
+const mongoSanitize = require('express-mongo-sanitize');
+const xss = require('xss-clean');
 const compression = require('compression');
 const validateEnv = require('./utils/validateEnv');
-const logger = require('./utils/logger');
+const { morganLogger, logger } = require('./utils/logger');
 const connectDB = require('./config/db');
 const  errorHandler  = require('./middleware/errorHandler');
 
@@ -38,10 +38,10 @@ app.use(cors({
 
 // === Global Middleware ===
 app.use(helmet());
-// app.use(xss());
-// app.use(mongoSanitize());
+app.use(xss());
+app.use(mongoSanitize());
 app.use(compression());
-app.use(logger); // ✅ Added logger middleware
+app.use(morganLogger); // ✅ Updated to use morganLogger
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -51,14 +51,13 @@ app.use(rateLimit({
 app.use(express.json());
 app.use(cookieParser());
 
-
 // === Routes ===
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/owner', ownerRoutes);
 app.use('/api/tenant', tenantRoutes);
 app.use('/api/complaints', complaintRoutes);
-app.use('/api/announcements', announcementRoutes); // ✅ Added
+app.use('/api/announcements', announcementRoutes);
 app.use('/api/ownership-requests', ownershipRequestRoutes); // ✅ Added
 
 // Default Route
@@ -71,5 +70,5 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
 });

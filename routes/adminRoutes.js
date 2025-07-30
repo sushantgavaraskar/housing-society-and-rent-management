@@ -4,54 +4,60 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 const authMiddleware = require('../middleware/authMiddleware');
 const roleMiddleware = require('../middleware/roleMiddleware');
+const paginationMiddleware = require('../middleware/paginationMiddleware');
 
-const validate = require('../middleware/validate'); // ✅ FIXED PATH
+const validate = require('../middleware/validate');
 
-const { societyCreateValidator } = require('../validators/societyValidator');
-const { assignOwnerValidator } = require('../validators/flatValidator');
-
+const { societyCreateValidator, societyUpdateValidator, buildingCreateValidator, buildingUpdateValidator, flatCreateValidator, flatAssignOwnerValidator, complaintStatusUpdateValidator, ownershipRequestReviewValidator, reminderValidator, societyNoteValidator, complaintsQueryValidator, userUpdateValidator } = require('../validators/adminValidator');
 
 router.use(authMiddleware);
 router.use(roleMiddleware('admin'));
 
-// Core society & building management
+// === SOCIETY MANAGEMENT ===
 router.post('/societies', societyCreateValidator, validate, adminController.createSociety);
+router.get('/societies/my', paginationMiddleware, adminController.getMySocieties);
+router.put('/societies/:id', societyUpdateValidator, validate, adminController.updateSociety);
+router.delete('/societies/:id', adminController.deleteSociety);
 
-router.get('/societies/my', adminController.getMySocieties);
-router.post('/buildings', adminController.createBuilding);
+// === BUILDING MANAGEMENT ===
+router.post('/buildings', buildingCreateValidator, validate, adminController.createBuilding);
+router.put('/buildings/:id', buildingUpdateValidator, validate, adminController.updateBuilding);
 router.delete('/buildings/:id', adminController.deleteBuilding);
 
-// Flat management
-router.patch('/flats/:flatId/assign-owner', assignOwnerValidator, validate, adminController.assignFlatOwner);
+// === FLAT MANAGEMENT ===
+router.post('/flats', flatCreateValidator, validate, adminController.createFlats);
+router.patch('/flats/:flatId/assign-owner', flatAssignOwnerValidator, validate, adminController.assignFlatOwner);
 router.patch('/flats/:flatId/remove-owner', adminController.removeFlatOwner);
-
 router.patch('/flats/:flatId/remove-tenant', adminController.removeFlatTenant);
 
-// Maintenance
+// === USER MANAGEMENT ===
+router.get('/users', paginationMiddleware, adminController.getAllUsers);
+router.get('/users/:id', adminController.getUserById);
+router.patch('/users/:id', userUpdateValidator, validate, adminController.updateUser);
+router.patch('/users/:id/toggle-status', adminController.toggleUserStatus);
+
+// === RENT MANAGEMENT ===
+router.post('/rent/generate', adminController.generateRent);
+router.get('/rent/history', paginationMiddleware, adminController.getRentHistory);
+
+// === MAINTENANCE ===
 router.post('/maintenance', adminController.generateMaintenance);
-router.get('/maintenance/status', adminController.getMaintenanceStatus);
+router.get('/maintenance/status', paginationMiddleware, adminController.getMaintenanceStatus);
 
-// Rent
-router.get('/rent/history', adminController.getRentHistory);
-
-// Ownership requests
+// === OWNERSHIP REQUESTS ===
 router.get('/ownership-requests', adminController.getOwnershipRequests);
-router.patch('/ownership-requests/:id', adminController.reviewOwnershipRequest);
+router.patch('/ownership-requests/:id', ownershipRequestReviewValidator, validate, adminController.reviewOwnershipRequest);
 
-// Announcements
-router.post('/announcements', adminController.createAnnouncement);
+// === COMPLAINTS ===
+router.get('/complaints', complaintsQueryValidator, validate, adminController.getComplaints);
+router.patch('/complaints/:id', complaintStatusUpdateValidator, validate, adminController.updateComplaintStatus);
 
-// Complaints
-router.get('/complaints', adminController.getComplaints);
-router.patch('/complaints/:id', adminController.updateComplaintStatus);
-
-// Dashboard & documents
+// === DASHBOARD & DOCUMENTS ===
 router.get('/dashboard/overview', adminController.getAdminDashboard);
-// router.get('/documents', adminController.getAllAgreements);
 router.get('/flats/:flatId/info', adminController.getFlatInfo);
 
-// Notes & reminders
-router.patch('/societies/:id/note', adminController.addSocietyNote);
-router.post('/users/:userID/reminder', adminController.sendReminderToUser);
+// === NOTES & REMINDERS ===
+router.patch('/societies/:id/note', societyNoteValidator, validate, adminController.addSocietyNote);
+router.post('/users/:userID/reminder', reminderValidator, validate, adminController.sendReminderToUser);
 
 module.exports = router;

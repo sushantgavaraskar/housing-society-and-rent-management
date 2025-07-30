@@ -1,30 +1,62 @@
 // controllers/complaintController.js
 
-const {
-  createComplaint,
-  getComplaintsByUser,
-  getAllComplaints,
-  updateComplaintStatus
-} = require('../services/complaintService');
-
+const Complaint = require('../models/Complaint');
+const Flat = require('../models/Flat');
 const formatResponse = require('../utils/responseFormatter');
+const { createComplaint: createComplaintService, updateComplaintStatus: updateComplaintStatusService, getAllComplaints: getAllComplaintsService } = require('../services/complaintService');
 
-// 1. Create a complaint (Tenant or Owner)
+// Create a new complaint (Owner or Tenant)
 exports.createComplaint = async (req, res, next) => {
   try {
-    const { flatId, category, subject, description } = req.body;
+    const { category, subject, description, flatId } = req.body;
+    
+    // If flatId is provided, validate it belongs to the user
+    let flat = null;
+    if (flatId) {
+      flat = await Flat.findOne({
+        _id: flatId,
+        $or: [
+          { owner: req.user._id },
+          { tenant: req.user._id }
+        ]
+      });
+      
+      if (!flat) {
+        return res.status(403).json(formatResponse({
+          success: false,
+          message: 'Flat not found or you do not have access to it',
+          statusCode: 403
+        }));
+      }
+    } else {
+      // If no flatId provided, find the user's flat
+      flat = await Flat.findOne({
+        $or: [
+          { owner: req.user._id },
+          { tenant: req.user._id }
+        ]
+      });
+      
+      if (!flat) {
+        return res.status(404).json(formatResponse({
+          success: false,
+          message: 'No flat assigned to you',
+          statusCode: 404
+        }));
+      }
+    }
 
-    const complaint = await createComplaint({
+    const complaint = await createComplaintService({
       raisedBy: req.user._id,
       userRole: req.user.role,
-      flatId,
+      flatId: flat._id,
       category,
       subject,
       description
     });
 
     res.status(201).json(formatResponse({
-      message: 'Complaint created successfully',
+      message: 'Complaint submitted successfully',
       data: complaint
     }));
   } catch (err) {
@@ -32,40 +64,35 @@ exports.createComplaint = async (req, res, next) => {
   }
 };
 
-// 2. Get all complaints raised by logged-in user
+// Get complaints filed by the logged-in user
 exports.getMyComplaints = async (req, res, next) => {
   try {
-    const complaints = await getComplaintsByUser(req.user._id, req.user.role);
+    const { page, limit, skip } = req.pagination || { page: 1, limit: 10, skip: 0 };
+    const { status, category } = req.query;
 
-    res.status(200).json(formatResponse({
-      message: 'Your complaints',
-      data: complaints
-    }));
-  } catch (err) {
-    next(err);
-  }
-};
+    const filter = { raisedBy: req.user._id };
+    if (status) filter.status = status;
+    if (category) filter.category = category;
 
-// 3. Get all complaints (Admin only, with pagination and filters)
-exports.getAllComplaints = async (req, res, next) => {
-  try {
-    const { page, limit, status, category } = req.query;
+    const [complaints, total] = await Promise.all([
+      Complaint.find(filter)
+        .populate('flat', 'flatNumber')
+        .populate('building', 'name')
+        .populate('society', 'name')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Complaint.countDocuments(filter)
+    ]);
 
-    const { complaints, total } = await getAllComplaints({
-      page,
-      limit,
-      status,
-      category
-    });
-
-    res.status(200).json(formatResponse({
-      message: 'Complaints retrieved',
+    res.json(formatResponse({
+      message: 'Complaints retrieved successfully',
       data: complaints,
       pagination: {
         total,
-        page: parseInt(page) || 1,
-        limit: parseInt(limit) || 10,
-        pages: Math.ceil(total / (limit || 10))
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
       }
     }));
   } catch (err) {
@@ -73,20 +100,60 @@ exports.getAllComplaints = async (req, res, next) => {
   }
 };
 
-// 4. Update complaint status (Admin only)
+// Get all complaints (Admin only)
+exports.getAllComplaints = async (req, res, next) => {
+  try {
+    const { page, limit, skip } = req.pagination || { page: 1, limit: 10, skip: 0 };
+    const { status, society, category } = req.query;
+
+    const filter = {};
+    if (status) filter.status = status;
+    if (society) filter.society = society;
+    if (category) filter.category = category;
+
+    const [complaints, total] = await Promise.all([
+      Complaint.find(filter)
+        .populate('raisedBy', 'name email')
+        .populate('flat', 'flatNumber')
+        .populate('building', 'name')
+        .populate('society', 'name')
+        .populate('resolvedBy', 'name')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Complaint.countDocuments(filter)
+    ]);
+
+    res.json(formatResponse({
+      message: 'All complaints retrieved successfully',
+      data: complaints,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Update complaint status (Admin only)
 exports.updateComplaintStatus = async (req, res, next) => {
   try {
-    const { complaintId, status, adminNote } = req.body;
+    const { id } = req.params;
+    const { status, adminNote } = req.body;
 
-    const complaint = await updateComplaintStatus({
-      complaintId,
+    const complaint = await updateComplaintStatusService({
+      complaintId: id,
       status,
       adminNote,
       resolvedBy: req.user._id
     });
 
-    res.status(200).json(formatResponse({
-      message: 'Complaint updated',
+    res.json(formatResponse({
+      message: 'Complaint status updated successfully',
       data: complaint
     }));
   } catch (err) {

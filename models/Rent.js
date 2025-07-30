@@ -34,26 +34,42 @@ const rentSchema = new mongoose.Schema({
     match: [/^\d{4}-(0[1-9]|1[0-2])$/, 'Format must be YYYY-MM'],
     // Example: "2025-06"
   },
-  rentAmount: {
+  amount: {
     type: Number,
     required: [true, 'Rent amount is required'],
     min: 0,
   },
-  isPaid: {
-    type: Boolean,
-    default: false,
+  status: {
+    type: String,
+    enum: ['unpaid', 'paid', 'overdue'],
+    default: 'unpaid',
   },
   paidOn: {
     type: Date,
     default: null,
   },
-  paymentMode: {
+  paymentMethod: {
     type: String,
     enum: ['cash', 'online', 'bank-transfer', 'upi'],
     default: 'online',
   },
+  transactionId: {
+    type: String,
+    default: null,
+  },
+  dueDate: {
+    type: Date,
+    required: true,
+  },
 }, {
   timestamps: true,
 });
+
+// Indexes for better query performance
+rentSchema.index({ billingMonth: 1, status: 1 });
+rentSchema.index({ tenant: 1, status: 1 });
+rentSchema.index({ owner: 1, status: 1 });
+rentSchema.index({ society: 1, billingMonth: 1 });
+rentSchema.index({ dueDate: 1, status: 1 });
 
 module.exports = mongoose.model('Rent', rentSchema);

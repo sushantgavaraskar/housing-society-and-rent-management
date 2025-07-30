@@ -4,24 +4,16 @@ const Maintenance = require('../models/Maintenance');
 const Rent = require('../models/Rent');
 const Announcement = require('../models/Announcement');
 const formatResponse = require('../utils/responseFormatter');
+const DashboardService = require('../services/dashboardService');
+const FlatService = require('../services/flatService');
 
 // 1. Get assigned flat
 exports.getMyFlat = async (req, res, next) => {
   try {
-    const flat = await Flat.findOne({ tenant: req.user._id })
-      .populate('building')
-      .populate('owner');
-
-    if (!flat) {
-      return res.status(404).json(formatResponse({
-        success: false,
-        message: 'Flat not assigned',
-        statusCode: 404
-      }));
-    }
+    const flat = await FlatService.getUserFlat(req.user._id);
 
     res.status(200).json(formatResponse({
-      message: 'Assigned flat retrieved',
+      message: 'Assigned flat retrieved successfully',
       data: flat
     }));
   } catch (err) {
@@ -36,7 +28,7 @@ exports.getRentHistory = async (req, res, next) => {
       .populate('flat');
 
     res.status(200).json(formatResponse({
-      message: 'Rent history retrieved',
+      message: 'Rent history retrieved successfully',
       data: rents
     }));
   } catch (err) {
@@ -63,87 +55,7 @@ exports.payRent = async (req, res, next) => {
   }
 };
 
-
-// 4. File complaint
-const { createComplaint } = require('../services/complaintService');
-
-exports.fileComplaint = async (req, res, next) => {
-  try {
-    const { flatId, category, subject, description } = req.body;
-    const complaint = await createComplaint({
-      raisedBy: req.user._id,
-      userRole: 'tenant',
-      flatId,
-      category,
-      subject,
-      description
-    });
-
-    res.status(201).json(formatResponse({
-      message: 'Complaint filed',
-      data: complaint
-    }));
-  } catch (err) {
-    next(err);
-  }
-};
-
-// 5. View own complaints
-exports.getMyComplaints = async (req, res, next) => {
-  try {
-    const { page, limit, skip } = require('../utils/pagination').paginateQuery(req);
-    const [complaints, total] = await Promise.all([
-      Complaint.find({ raisedBy: req.user._id, userRole: 'tenant' })
-        .populate('flat building').skip(skip).limit(limit),
-      Complaint.countDocuments({ raisedBy: req.user._id, userRole: 'tenant' })
-    ]);
-
-    res.status(200).json(formatResponse({
-      message: 'Complaints retrieved',
-      data: complaints,
-      pagination: { total, page, limit, pages: Math.ceil(total / limit) }
-    }));
-  } catch (err) {
-    next(err);
-  }
-};
-
-
-// 6. View announcements
-exports.getRelevantAnnouncements = async (req, res, next) => {
-  try {
-    const flat = await Flat.findOne({ tenant: req.user._id });
-    if (!flat) {
-      return res.status(404).json(formatResponse({
-        success: false,
-        message: 'No assigned flat found',
-        statusCode: 404
-      }));
-    }
-
-    const announcements = await Announcement.find({
-      society: flat.society,
-      $or: [
-        { audience: 'all' },
-        { audience: 'tenants' },
-        { building: null },
-        { building: flat.building },
-      
-        { validTill: null },
-        { validTill: { $gte: new Date() } }
-      ]
-    }).sort({ createdAt: -1 });
-
-    res.status(200).json(formatResponse({
-      message: 'Announcements retrieved',
-      data: announcements
-    }));
-  } catch (err) {
-    next(err);
-  }
-};
-
-// 7. View unpaid maintenance
+// 4. View unpaid maintenance
 exports.getUnpaidMaintenance = async (req, res, next) => {
   try {
     const flat = await Flat.findOne({ tenant: req.user._id });
@@ -161,7 +73,7 @@ exports.getUnpaidMaintenance = async (req, res, next) => {
     }).sort({ billingMonth: -1 });
 
     res.status(200).json(formatResponse({
-      message: 'Unpaid maintenance retrieved',
+      message: 'Unpaid maintenance retrieved successfully',
       data: maintenance
     }));
   } catch (err) {
@@ -169,7 +81,7 @@ exports.getUnpaidMaintenance = async (req, res, next) => {
   }
 };
 
-// 8. Pay maintenance
+// 5. Pay maintenance
 const { payMaintenance } = require('../services/paymentService');
 
 exports.payMaintenance = async (req, res, next) => {
@@ -189,27 +101,21 @@ exports.payMaintenance = async (req, res, next) => {
   }
 };
 
-// 9. Dashboard overview
+// 6. Dashboard overview
 exports.getTenantDashboard = async (req, res, next) => {
   try {
-    const rentCount = await Rent.countDocuments({ tenant: req.user._id });
-    const complaintCount = await Complaint.countDocuments({ raisedBy: req.user._id, userRole: 'tenant' });
-    const unpaidMaintenance = await Maintenance.countDocuments({ isPaid: false, flat: (await Flat.findOne({ tenant: req.user._id }))._id });
+    const dashboardData = await DashboardService.getTenantDashboard(req.user._id);
 
     res.status(200).json(formatResponse({
-      message: 'Dashboard retrieved',
-      data: {
-        rentPayments: rentCount,
-        complaintsFiled: complaintCount,
-        unpaidMaintenanceCount: unpaidMaintenance
-      }
+      message: 'Tenant dashboard data retrieved successfully',
+      data: dashboardData
     }));
   } catch (err) {
     next(err);
   }
 };
 
-// 2.5. Get current month's rent (if exists)
+// 7. Get current month's rent (if exists)
 exports.getCurrentRent = async (req, res, next) => {
   try {
     const flat = await Flat.findOne({ tenant: req.user._id });
@@ -238,13 +144,14 @@ exports.getCurrentRent = async (req, res, next) => {
     }
 
     res.status(200).json(formatResponse({
-      message: 'Current month rent retrieved',
+      message: 'Current month rent retrieved successfully',
       data: rent
     }));
   } catch (err) {
     next(err);
   }
 };
+
 exports.updateMyProfile = async (req, res, next) => {
   try {
     const { name, phone, profilePic } = req.body;
@@ -266,6 +173,49 @@ exports.updateMyProfile = async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         profilePic: user.profilePic
+      }
+    }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 📣 Announcements
+exports.getRelevantAnnouncements = async (req, res, next) => {
+  try {
+    const { priority, page = 1, limit = 10 } = req.query;
+    
+    const flat = await Flat.findOne({ tenant: req.user._id });
+    if (!flat) {
+      return res.status(404).json(formatResponse({
+        success: false,
+        message: 'No assigned flat found',
+        statusCode: 404
+      }));
+    }
+
+    const filter = { society: flat.society };
+    if (priority) filter.priority = priority;
+
+    const skip = (page - 1) * limit;
+    const [announcements, total] = await Promise.all([
+      Announcement.find(filter)
+        .populate('society', 'name')
+        .populate('createdBy', 'name')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      Announcement.countDocuments(filter)
+    ]);
+
+    res.json(formatResponse({
+      message: 'Relevant announcements retrieved successfully',
+      data: announcements,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit)
       }
     }));
   } catch (err) {
